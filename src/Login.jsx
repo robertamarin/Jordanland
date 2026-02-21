@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function Login({ onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handle = async (e) => {
@@ -18,7 +20,12 @@ export default function Login({ onAuth }) {
     setLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          displayName: displayName.trim(),
+          email: email,
+          createdAt: new Date(),
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -168,6 +175,47 @@ export default function Login({ onAuth }) {
 
         {/* Form */}
         <form onSubmit={handle}>
+          {isSignUp && (
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#cbd5e1",
+                  marginBottom: 6,
+                }}
+              >
+                الاسم الكامل
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="مثال: أحمد محمد"
+                required
+                style={{
+                  width: "100%",
+                  background: "rgba(255,255,255,0.07)",
+                  border: "1.5px solid rgba(255,255,255,0.12)",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  fontSize: 13,
+                  color: "white",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) =>
+                  (e.target.style.borderColor = "rgba(217,119,6,0.5)")
+                }
+                onBlur={(e) =>
+                  (e.target.style.borderColor = "rgba(255,255,255,0.12)")
+                }
+              />
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <label
               style={{
@@ -292,6 +340,7 @@ export default function Login({ onAuth }) {
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError("");
+              setDisplayName("");
             }}
             style={{
               color: "#fbbf24",

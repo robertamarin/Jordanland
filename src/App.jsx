@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import UploadLand from "./UploadLand";
 
@@ -608,9 +608,9 @@ function CompareModal({lots,onClose}){
   </div>;
 }
 
-export default function JordanLand(){
+export default function JordanLand({ user }){
   const [page,setPage]=useState("home");
-  const [filters,setFilters]=useState({gov:"",dist:"",village:"",basin:""});
+  const [filters,setFilters]=useState({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});
   const [sort,setSort]=useState("price-asc");
   const [search,setSearch]=useState("");
   const [favs,setFavs]=useState([]);
@@ -621,15 +621,29 @@ export default function JordanLand(){
   const [perPage,setPerPage]=useState(40);
   const [showUpload,setShowUpload]=useState(false);
   const [fbLands,setFbLands]=useState([]);
+  const [userProfile,setUserProfile]=useState(null);
+  const [editingLand,setEditingLand]=useState(null);
+  const [deleteConfirm,setDeleteConfirm]=useState(null);
   const listRef=useRef(null);
 
   useEffect(()=>{
     const unsub=onSnapshot(collection(db,"lands"),(snap)=>{
-      const lands=snap.docs.map((doc,i)=>{const d=doc.data();return{id:"fb_"+doc.id,gov:d.gov||"",dist:d.dist||"",village:d.village||"",basinNo:d.basinNo||0,basin:d.basin||"",hood:d.hood||0,board:d.board||0,plot:d.plot||0,area:d.area||0,share:d.share||"1/1",ppm:d.ppm||0,price:d.price||0,mapUrl:d.mapUrl||"",pic:d.pic||"",userSubmitted:true};});
+      const lands=snap.docs.map((d_doc,i)=>{const d=d_doc.data();return{id:"fb_"+d_doc.id,gov:d.gov||"",dist:d.dist||"",village:d.village||"",basinNo:d.basinNo||0,basin:d.basin||"",hood:d.hood||0,board:d.board||0,plot:d.plot||0,area:d.area||0,share:d.share||"1/1",ppm:d.ppm||0,price:d.price||0,mapUrl:d.mapUrl||"",pic:d.pic||"",uid:d.uid||"",description:d.description||"",userSubmitted:true};});
       setFbLands(lands);
     });
     return unsub;
   },[]);
+
+  useEffect(()=>{
+    if(!user?.uid)return;
+    const fetchProfile=async()=>{
+      try{
+        const snap=await getDoc(doc(db,"users",user.uid));
+        if(snap.exists())setUserProfile(snap.data());
+      }catch(e){console.error("Error fetching user profile:",e);}
+    };
+    fetchProfile();
+  },[user?.uid]);
 
   const ALL_LOTS=useMemo(()=>[...LOTS,...fbLands],[fbLands]);
 
@@ -653,6 +667,12 @@ export default function JordanLand(){
     if(filters.dist)r=r.filter(l=>l.dist===filters.dist);
     if(filters.village)r=r.filter(l=>l.village===filters.village);
     if(filters.basin)r=r.filter(l=>l.basin===filters.basin);
+    if(filters.priceMin)r=r.filter(l=>l.price>=parseFloat(filters.priceMin));
+    if(filters.priceMax)r=r.filter(l=>l.price<=parseFloat(filters.priceMax));
+    if(filters.areaMin)r=r.filter(l=>l.area>=parseFloat(filters.areaMin));
+    if(filters.areaMax)r=r.filter(l=>l.area<=parseFloat(filters.areaMax));
+    if(filters.hasMap)r=r.filter(l=>!!l.mapUrl);
+    if(filters.hasPhoto)r=r.filter(l=>!!l.pic);
     const [key,dir]=sort.split("-");
     r=[...r].sort((a,b)=>{if(key==="gov"||key==="village")return dir==="asc"?String(a[key]).localeCompare(String(b[key]),"ar"):String(b[key]).localeCompare(String(a[key]),"ar");return dir==="asc"?(a[key]-b[key]):(b[key]-a[key]);});
     return r;
@@ -661,6 +681,15 @@ export default function JordanLand(){
   const shown=filtered.slice(0,perPage);
   const favLots=useMemo(()=>ALL_LOTS.filter(l=>favs.includes(l.id)),[favs,ALL_LOTS]);
   const compLots=useMemo(()=>ALL_LOTS.filter(l=>compIds.includes(l.id)),[compIds,ALL_LOTS]);
+  const myLands=useMemo(()=>{if(!user?.uid)return[];return ALL_LOTS.filter(l=>l.uid===user.uid);},[ALL_LOTS,user?.uid]);
+
+  const handleDelete=async(landId)=>{
+    try{
+      const docId=landId.replace("fb_","");
+      await deleteDoc(doc(db,"lands",docId));
+      setDeleteConfirm(null);
+    }catch(err){alert("خطأ في الحذف: "+err.message);}
+  };
 
   const setFilter=(k,v)=>{
     const next={...filters,[k]:v};
@@ -669,8 +698,8 @@ export default function JordanLand(){
     if(k==="village"){next.basin="";}
     setFilters(next);setPerPage(40);
   };
-  const clearFilters=()=>{setFilters({gov:"",dist:"",village:"",basin:""});setSearch("");setPerPage(40);};
-  const activeCount=Object.values(filters).filter(Boolean).length+(search?1:0);
+  const clearFilters=()=>{setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setSearch("");setPerPage(40);};
+  const activeCount=Object.entries(filters).filter(([k,v])=>typeof v==="boolean"?v:Boolean(v)).length+(search?1:0);
 
   // Governorate stats
   const govStats=useMemo(()=>govs.map(g=>{const lots=ALL_LOTS.filter(l=>l.gov===g);return{name:g,count:lots.length,villages:[...new Set(lots.map(l=>l.village))],totalValue:lots.reduce((s,l)=>s+l.price,0)};}),[govs,ALL_LOTS]);
@@ -681,12 +710,14 @@ export default function JordanLand(){
       <span style={{fontSize:16,fontWeight:800,color:"#fbbf24"}}>أراضي الأردن</span>
       <span style={{fontSize:10,color:"#94a3b8",fontWeight:500}}>Jordan Land</span>
     </div>
-    <div style={{display:"flex",gap:6}}>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {userProfile?.displayName&&<span style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginLeft:8}}>مرحباً، <span style={{color:"#fbbf24",fontWeight:700}}>{userProfile.displayName}</span></span>}
       <button onClick={()=>setShowFavs(true)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:3,position:"relative"}}>
         ❤️{favs.length>0&&<span style={{background:"#ef4444",color:"white",fontSize:8,fontWeight:800,borderRadius:10,padding:"0px 5px",marginRight:2}}>{favs.length}</span>}
       </button>
       {compIds.length>=2&&<button onClick={()=>setShowComp(true)} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600}}>⚖️ قارن ({compIds.length})</button>}
       <button onClick={()=>setShowUpload(true)} style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:700}}>+ إضافة أرض</button>
+      <button onClick={()=>setPage("my-listings")} style={{background:page==="my-listings"?"linear-gradient(135deg,#8b5cf6,#6d28d9)":"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600}}>عروضي{myLands.length>0&&<span style={{background:"#8b5cf6",color:"white",fontSize:8,fontWeight:800,borderRadius:10,padding:"0px 5px",marginRight:3}}>{myLands.length}</span>}</button>
       {page!=="listings"&&<button onClick={()=>setPage("listings")} style={{background:"linear-gradient(135deg,#d97706,#b45309)",border:"none",borderRadius:7,padding:"5px 16px",color:"white",cursor:"pointer",fontSize:11,fontWeight:700}}>تصفح الأراضي</button>}
       <button onClick={()=>signOut(auth)} style={{background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:7,padding:"5px 12px",color:"#fca5a5",cursor:"pointer",fontSize:11,fontWeight:600}}>خروج</button>
     </div>
@@ -705,9 +736,9 @@ export default function JordanLand(){
         <h2 style={{fontSize:18,fontWeight:400,color:"#fbbf24",marginBottom:16}}>مئات قطع الأراضي المميزة في كافة المحافظات</h2>
         <p style={{fontSize:13,color:"#94a3b8",lineHeight:1.8,maxWidth:500,marginBottom:24}}>منصة متكاملة لبيع الأراضي في المملكة الأردنية الهاشمية. ابحث، قارن، واستثمر بثقة.</p>
         <div style={{background:"rgba(255,255,255,0.08)",backdropFilter:"blur(10px)",borderRadius:13,padding:5,display:"flex",gap:5,border:"1px solid rgba(255,255,255,0.1)",maxWidth:500}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث بالمحافظة، مديرية التسجيل، القرية، أو الحوض..." onKeyDown={e=>{if(e.key==="Enter"){setFilters({gov:"",dist:"",village:"",basin:""});setPage("listings");}}}
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث بالمحافظة، مديرية التسجيل، القرية، أو الحوض..." onKeyDown={e=>{if(e.key==="Enter"){setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setPage("listings");}}}
             style={{flex:1,background:"rgba(255,255,255,0.06)",borderRadius:9,padding:"11px 14px",fontSize:12.5,color:"white",border:"none",outline:"none"}}/>
-          <button onClick={()=>{setFilters({gov:"",dist:"",village:"",basin:""});setPage("listings");}} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",borderRadius:9,padding:"11px 22px",fontSize:12.5,fontWeight:700,border:"none",cursor:"pointer"}}>🔍 بحث</button>
+          <button onClick={()=>{setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setPage("listings");}} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",borderRadius:9,padding:"11px 22px",fontSize:12.5,fontWeight:700,border:"none",cursor:"pointer"}}>🔍 بحث</button>
         </div>
         <div style={{display:"flex",gap:36,marginTop:28}}>
           {[[ALL_LOTS.length,"قطعة أرض"],[govs.length,"محافظات"],[ALL_LOTS.filter(l=>l.mapUrl).length,"موقع على الخريطة"],[ALL_LOTS.filter(l=>l.pic).length,"صورة متوفرة"]].map(([n,l],i)=>
@@ -752,7 +783,68 @@ export default function JordanLand(){
     </div>
     {showFavs&&<FavModal lots={favLots} onClose={()=>setShowFavs(false)} onDetail={l=>{setDetail(l);setShowFavs(false)}} toggleFav={toggleFav}/>}
     <DetailModal lot={detail} onClose={()=>setDetail(null)}/>
-    {showUpload&&<UploadLand onClose={()=>setShowUpload(false)}/>}
+    {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
+  </div>;
+
+  // ─── MY LISTINGS ───
+  if(page==="my-listings")return <div dir="rtl" style={{fontFamily:"'Segoe UI','Noto Kufi Arabic',Tahoma,sans-serif",background:"#fafaf8",minHeight:"100vh"}}>
+    <Navbar/>
+    <div style={{maxWidth:900,margin:"0 auto",padding:"28px 20px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div>
+          <h1 style={{fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:4}}>عروضي</h1>
+          <p style={{fontSize:12,color:"#64748b"}}>{myLands.length>0?`لديك ${myLands.length} عرض`:"لم تقم بإضافة أي عرض بعد"}</p>
+        </div>
+        <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",borderRadius:9,padding:"10px 20px",color:"white",cursor:"pointer",fontSize:13,fontWeight:700}}>+ إضافة أرض جديدة</button>
+      </div>
+
+      {myLands.length===0?
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:48,marginBottom:14}}>📋</div>
+          <h3 style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:6}}>لا توجد عروض</h3>
+          <p style={{fontSize:12,color:"#64748b",marginBottom:16}}>أضف أول قطعة أرض لعرضها على المنصة</p>
+          <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",border:"none",borderRadius:9,padding:"10px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>إضافة أرض</button>
+        </div>
+      :
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {myLands.map(land=><div key={land.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1,cursor:"pointer"}} onClick={()=>setDetail(land)}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{background:gc(land.gov).bg,color:gc(land.gov).tx,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6}}>{land.gov.replace("محافظة ","")}</span>
+                  {land.mapUrl&&<span style={{background:"#e8f0fe",color:"#1a73e8",fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5}}>📍 خريطة</span>}
+                  {land.pic&&<span style={{background:"#f0fdf4",color:"#059669",fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5}}>🏞️ صورة</span>}
+                </div>
+                <div style={{fontSize:15,fontWeight:800,color:"#1e293b",marginBottom:3}}>قطعة رقم {land.plot} — {land.village}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>حوض {land.basin} | {fmt(land.area)} م² | {fmtJOD(land.price)}</div>
+                {land.description&&<div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>{land.description}</div>}
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0,marginRight:12}}>
+                <button onClick={()=>{setEditingLand(land);setShowUpload(true);}} style={{background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:7,padding:"6px 12px",color:"#0284c7",cursor:"pointer",fontSize:11,fontWeight:600}}>✏️ تعديل</button>
+                <button onClick={()=>setDeleteConfirm(land)} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"6px 12px",color:"#dc2626",cursor:"pointer",fontSize:11,fontWeight:600}}>🗑️ حذف</button>
+              </div>
+            </div>
+          </div>)}
+        </div>
+      }
+    </div>
+
+    {/* Delete Confirmation Modal */}
+    {deleteConfirm&&<div onClick={()=>setDeleteConfirm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div onClick={e=>e.stopPropagation()} dir="rtl" style={{background:"white",borderRadius:18,maxWidth:400,width:"100%",padding:28,textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
+        <h3 style={{fontSize:16,fontWeight:800,color:"#1e293b",marginBottom:6}}>تأكيد الحذف</h3>
+        <p style={{fontSize:12,color:"#64748b",marginBottom:20}}>هل أنت متأكد من حذف قطعة رقم {deleteConfirm.plot} في {deleteConfirm.village}؟ لا يمكن التراجع عن هذا الإجراء.</p>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setDeleteConfirm(null)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:12,fontWeight:600,cursor:"pointer",fontSize:12}}>إلغاء</button>
+          <button onClick={()=>handleDelete(deleteConfirm.id)} style={{flex:1,background:"#dc2626",border:"none",borderRadius:9,padding:12,color:"white",fontWeight:700,cursor:"pointer",fontSize:12}}>نعم، احذف</button>
+        </div>
+      </div>
+    </div>}
+
+    <DetailModal lot={detail} onClose={()=>setDetail(null)}/>
+    {showFavs&&<FavModal lots={favLots} onClose={()=>setShowFavs(false)} onDetail={l=>{setDetail(l);setShowFavs(false)}} toggleFav={toggleFav}/>}
+    {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
   </div>;
 
   // ─── LISTINGS ───
@@ -770,12 +862,44 @@ export default function JordanLand(){
         <FilterSelect label="مديرية التسجيل" icon="📍" value={filters.dist} options={dists} onChange={v=>setFilter("dist",v)} disabled={!filters.gov}/>
         <FilterSelect label="القرية" icon="🏘️" value={filters.village} options={villages} onChange={v=>setFilter("village",v)} disabled={!filters.dist}/>
         <FilterSelect label="الحوض" icon="📐" value={filters.basin} options={basins} onChange={v=>setFilter("basin",v)} disabled={!filters.village}/>
+        {/* Price Range */}
+        <div style={{marginBottom:11}}>
+          <label style={{display:"flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:700,color:"#475569",marginBottom:4}}>
+            <span style={{fontSize:13}}>💰</span>السعر (د.أ)
+          </label>
+          <div style={{display:"flex",gap:6}}>
+            <input type="number" value={filters.priceMin} onChange={e=>setFilter("priceMin",e.target.value)} placeholder="من" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+            <input type="number" value={filters.priceMax} onChange={e=>setFilter("priceMax",e.target.value)} placeholder="إلى" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+        </div>
+        {/* Area Range */}
+        <div style={{marginBottom:11}}>
+          <label style={{display:"flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:700,color:"#475569",marginBottom:4}}>
+            <span style={{fontSize:13}}>📐</span>المساحة (م²)
+          </label>
+          <div style={{display:"flex",gap:6}}>
+            <input type="number" value={filters.areaMin} onChange={e=>setFilter("areaMin",e.target.value)} placeholder="من" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+            <input type="number" value={filters.areaMax} onChange={e=>setFilter("areaMax",e.target.value)} placeholder="إلى" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+        </div>
+        {/* Toggle Filters */}
+        <div style={{display:"flex",gap:8,marginBottom:11}}>
+          <label onClick={()=>setFilter("hasMap",!filters.hasMap)} style={{flex:1,display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:filters.hasMap?"#1a73e8":"#94a3b8",cursor:"pointer",background:filters.hasMap?"#e8f0fe":"#f8fafc",borderRadius:7,padding:"7px 8px",border:filters.hasMap?"1.5px solid #4285f440":"1.5px solid #e2e8f0",transition:"all 0.2s"}}>
+            📍 خريطة
+          </label>
+          <label onClick={()=>setFilter("hasPhoto",!filters.hasPhoto)} style={{flex:1,display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:filters.hasPhoto?"#059669":"#94a3b8",cursor:"pointer",background:filters.hasPhoto?"#f0fdf4":"#f8fafc",borderRadius:7,padding:"7px 8px",border:filters.hasPhoto?"1.5px solid #10b98140":"1.5px solid #e2e8f0",transition:"all 0.2s"}}>
+            🏞️ صورة
+          </label>
+        </div>
         {activeCount>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
-          {Object.entries(filters).filter(([,v])=>v).map(([k,v])=>
-            <span key={k} style={{background:"#fef3c7",color:"#92400e",fontSize:9,fontWeight:600,padding:"2px 7px",borderRadius:5,display:"flex",alignItems:"center",gap:3}}>
-              {v.replace("محافظة ","").replace("اراضي ","")}<span onClick={()=>setFilter(k,"")} style={{cursor:"pointer",fontWeight:800}}>✕</span>
-            </span>
-          )}
+          {Object.entries(filters).filter(([k,v])=>typeof v==="boolean"?v:Boolean(v)).map(([k,v])=>{
+            const labels={priceMin:"سعر من "+v,priceMax:"سعر حتى "+v,areaMin:"مساحة من "+v,areaMax:"مساحة حتى "+v,hasMap:"خريطة",hasPhoto:"صورة"};
+            const display=labels[k]||(typeof v==="string"?v.replace("محافظة ","").replace("اراضي ",""):String(v));
+            const resetVal=typeof v==="boolean"?false:"";
+            return <span key={k} style={{background:"#fef3c7",color:"#92400e",fontSize:9,fontWeight:600,padding:"2px 7px",borderRadius:5,display:"flex",alignItems:"center",gap:3}}>
+              {display}<span onClick={()=>setFilter(k,resetVal)} style={{cursor:"pointer",fontWeight:800}}>✕</span>
+            </span>;
+          })}
         </div>}
         <div style={{marginTop:"auto",paddingTop:16,borderTop:"1px solid #f1f5f9"}}>
           <div style={{background:"#f8fafc",borderRadius:9,padding:12}}>
@@ -828,7 +952,7 @@ export default function JordanLand(){
     <DetailModal lot={detail} onClose={()=>setDetail(null)}/>
     {showComp&&<CompareModal lots={compLots} onClose={()=>setShowComp(false)}/>}
     {showFavs&&<FavModal lots={favLots} onClose={()=>setShowFavs(false)} onDetail={l=>{setDetail(l);setShowFavs(false)}} toggleFav={toggleFav}/>}
-    {showUpload&&<UploadLand onClose={()=>setShowUpload(false)}/>}
+    {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
   </div>;
 }
 

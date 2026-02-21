@@ -41,7 +41,7 @@ function Root() {
 
   if (!user) return <Login />
 
-  return <App />
+  return <App user={user} />
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

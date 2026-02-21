@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "./firebase";
 
 const GOVS = [
@@ -38,20 +38,21 @@ const labelStyle = {
   marginBottom: 5,
 };
 
-export default function UploadLand({ onClose, onSuccess }) {
+export default function UploadLand({ onClose, onSuccess, editData }) {
   const [form, setForm] = useState({
-    gov: "",
-    dist: "",
-    village: "",
-    basinNo: "",
-    basin: "",
-    hood: "",
-    board: "",
-    plot: "",
-    area: "",
-    share: "",
-    ppm: "",
-    mapUrl: "",
+    gov: editData?.gov || "",
+    dist: editData?.dist || "",
+    village: editData?.village || "",
+    basinNo: editData?.basinNo ? String(editData.basinNo) : "",
+    basin: editData?.basin || "",
+    hood: editData?.hood ? String(editData.hood) : "",
+    board: editData?.board ? String(editData.board) : "",
+    plot: editData?.plot ? String(editData.plot) : "",
+    area: editData?.area ? String(editData.area) : "",
+    share: editData?.share || "",
+    ppm: editData?.ppm ? String(editData.ppm) : "",
+    mapUrl: editData?.mapUrl || "",
+    description: editData?.description || "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +75,7 @@ export default function UploadLand({ onClose, onSuccess }) {
       const ppm = parseFloat(form.ppm) || 0;
       const price = area * ppm;
 
-      await addDoc(collection(db, "lands"), {
+      const landData = {
         gov: form.gov,
         dist: form.dist,
         village: form.village,
@@ -88,10 +89,23 @@ export default function UploadLand({ onClose, onSuccess }) {
         ppm,
         price,
         mapUrl: form.mapUrl,
-        pic: "",
-        uid: auth.currentUser?.uid || "",
-        createdAt: serverTimestamp(),
-      });
+        description: form.description || "",
+        pic: editData?.pic || "",
+      };
+
+      if (editData) {
+        const docId = editData.id.replace("fb_", "");
+        await updateDoc(doc(db, "lands", docId), {
+          ...landData,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "lands"), {
+          ...landData,
+          uid: auth.currentUser?.uid || "",
+          createdAt: serverTimestamp(),
+        });
+      }
 
       setSuccess(true);
       if (onSuccess) onSuccess();
@@ -152,6 +166,13 @@ export default function UploadLand({ onClose, onSuccess }) {
       type: "number",
     },
     {
+      key: "description",
+      label: "ملاحظات / وصف",
+      placeholder: "أضف وصفاً أو ملاحظات عن القطعة...",
+      full: true,
+      type: "textarea",
+    },
+    {
       key: "mapUrl",
       label: "رابط خرائط جوجل",
       placeholder: "https://maps.app.goo.gl/...",
@@ -207,7 +228,7 @@ export default function UploadLand({ onClose, onSuccess }) {
                 margin: 0,
               }}
             >
-              إضافة أرض جديدة
+              {editData ? "تعديل بيانات الأرض" : "إضافة أرض جديدة"}
             </h2>
             <p
               style={{
@@ -216,7 +237,7 @@ export default function UploadLand({ onClose, onSuccess }) {
                 margin: "4px 0 0",
               }}
             >
-              أدخل بيانات القطعة لعرضها على المنصة
+              {editData ? "عدّل البيانات ثم اضغط حفظ" : "أدخل بيانات القطعة لعرضها على المنصة"}
             </p>
           </div>
           <button
@@ -286,7 +307,21 @@ export default function UploadLand({ onClose, onSuccess }) {
                 style={f.full ? { gridColumn: "1 / -1" } : undefined}
               >
                 <label style={labelStyle}>{f.label}</label>
-                {f.type === "select" ? (
+                {f.type === "textarea" ? (
+                  <textarea
+                    value={form[f.key]}
+                    onChange={(e) => set(f.key, e.target.value)}
+                    placeholder={f.placeholder || ""}
+                    rows={3}
+                    style={{ ...inputStyle, resize: "vertical", minHeight: 70 }}
+                    onFocus={(e) =>
+                      (e.target.style.borderColor = "rgba(217,119,6,0.5)")
+                    }
+                    onBlur={(e) =>
+                      (e.target.style.borderColor = "rgba(255,255,255,0.12)")
+                    }
+                  />
+                ) : f.type === "select" ? (
                   <select
                     value={form[f.key]}
                     onChange={(e) => set(f.key, e.target.value)}
@@ -394,7 +429,7 @@ export default function UploadLand({ onClose, onSuccess }) {
                 boxShadow: "0 4px 16px rgba(217,119,6,0.3)",
               }}
             >
-              {loading ? "جارٍ الإضافة..." : success ? "تم!" : "إضافة الأرض"}
+              {loading ? "جارٍ الحفظ..." : success ? "تم!" : editData ? "حفظ التعديلات" : "إضافة الأرض"}
             </button>
           </div>
         </form>
