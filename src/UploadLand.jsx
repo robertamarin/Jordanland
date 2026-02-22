@@ -3,38 +3,36 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/fi
 import { db, auth } from "./firebase";
 
 const GOVS = [
-  "محافظة اربد",
-  "محافظة البلقاء",
-  "محافظة الزرقاء",
-  "محافظة العاصمة",
-  "محافظة العقبة",
-  "محافظة الكرك",
-  "محافظة المفرق",
-  "محافظة جرش",
-  "محافظة عجلون",
-  "محافظة مادبا",
-  "محافظة معان",
-  "محافظة الطفيلة",
+  "محافظة اربد","محافظة البلقاء","محافظة الزرقاء","محافظة العاصمة",
+  "محافظة العقبة","محافظة الكرك","محافظة المفرق","محافظة جرش",
+  "محافظة عجلون","محافظة مادبا","محافظة معان","محافظة الطفيلة",
 ];
+
+const GOV_EN = {
+  "محافظة اربد":"Irbid","محافظة البلقاء":"Balqa","محافظة الزرقاء":"Zarqa",
+  "محافظة العاصمة":"Amman","محافظة العقبة":"Aqaba","محافظة الكرك":"Karak",
+  "محافظة المفرق":"Mafraq","محافظة جرش":"Jerash","محافظة عجلون":"Ajloun",
+  "محافظة مادبا":"Madaba","محافظة معان":"Ma'an","محافظة الطفيلة":"Tafilah",
+};
 
 const inputStyle = {
   width: "100%",
-  background: "rgba(255,255,255,0.07)",
-  border: "1.5px solid rgba(255,255,255,0.12)",
-  borderRadius: 10,
-  padding: "11px 14px",
-  fontSize: 13,
-  color: "white",
+  background: "#f9fafb",
+  border: "1px solid #d1d5db",
+  borderRadius: 8,
+  padding: "10px 12px",
+  fontSize: 14,
+  color: "#111827",
   outline: "none",
   boxSizing: "border-box",
-  transition: "border-color 0.2s",
+  transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
 const labelStyle = {
   display: "block",
-  fontSize: 11.5,
-  fontWeight: 600,
-  color: "#cbd5e1",
+  fontSize: 12,
+  fontWeight: 500,
+  color: "#374151",
   marginBottom: 5,
 };
 
@@ -63,53 +61,33 @@ export default function UploadLand({ onClose, onSuccess, editData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     if (!form.gov || !form.village || !form.plot || !form.area) {
-      setError("المحافظة، القرية، رقم القطعة، والمساحة مطلوبة");
+      setError("Governorate, village, plot number, and area are required");
       return;
     }
-
     setLoading(true);
     try {
       const area = parseFloat(form.area) || 0;
       const ppm = parseFloat(form.ppm) || 0;
       const price = area * ppm;
-
       const landData = {
-        gov: form.gov,
-        dist: form.dist,
-        village: form.village,
-        basinNo: parseInt(form.basinNo) || 0,
-        basin: form.basin,
-        hood: parseInt(form.hood) || 0,
-        board: parseInt(form.board) || 0,
-        plot: parseInt(form.plot) || 0,
-        area,
-        share: form.share || "1/1",
-        ppm,
-        price,
-        mapUrl: form.mapUrl,
-        description: form.description || "",
+        gov: form.gov, dist: form.dist, village: form.village,
+        basinNo: parseInt(form.basinNo) || 0, basin: form.basin,
+        hood: parseInt(form.hood) || 0, board: parseInt(form.board) || 0,
+        plot: parseInt(form.plot) || 0, area,
+        share: form.share || "1/1", ppm, price,
+        mapUrl: form.mapUrl, description: form.description || "",
         pic: editData?.pic || "",
       };
-
       if (editData) {
         const docId = editData.id.replace("fb_", "");
-        await updateDoc(doc(db, "lands", docId), {
-          ...landData,
-          updatedAt: serverTimestamp(),
-        });
+        await updateDoc(doc(db, "lands", docId), { ...landData, updatedAt: serverTimestamp() });
       } else {
-        await addDoc(collection(db, "lands"), {
-          ...landData,
-          uid: auth.currentUser?.uid || "",
-          createdAt: serverTimestamp(),
-        });
+        await addDoc(collection(db, "lands"), { ...landData, uid: auth.currentUser?.uid || "", createdAt: serverTimestamp() });
       }
-
       setSuccess(true);
       if (onSuccess) onSuccess();
-      setTimeout(() => onClose(), 1500);
+      setTimeout(() => onClose(), 1200);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -118,248 +96,84 @@ export default function UploadLand({ onClose, onSuccess, editData }) {
   };
 
   const fields = [
-    {
-      key: "gov",
-      label: "المحافظة *",
-      type: "select",
-      options: GOVS,
-      full: true,
-    },
-    { key: "dist", label: "مديرية التسجيل", placeholder: "مثال: اراضي اربد" },
-    { key: "village", label: "القرية *", placeholder: "مثال: بشرى" },
-    { key: "basin", label: "اسم الحوض", placeholder: "مثال: البيدر" },
-    {
-      key: "basinNo",
-      label: "رقم الحوض",
-      placeholder: "مثال: 28",
-      type: "number",
-    },
-    {
-      key: "hood",
-      label: "رقم الحي",
-      placeholder: "مثال: 2",
-      type: "number",
-    },
-    {
-      key: "board",
-      label: "رقم اللوحة",
-      placeholder: "مثال: 7",
-      type: "number",
-    },
-    {
-      key: "plot",
-      label: "رقم القطعة *",
-      placeholder: "مثال: 9",
-      type: "number",
-    },
-    {
-      key: "area",
-      label: "المساحة (م²) *",
-      placeholder: "مثال: 870.43",
-      type: "number",
-    },
-    { key: "share", label: "الحصة", placeholder: "مثال: 1/1 أو 0.5" },
-    {
-      key: "ppm",
-      label: "سعر المتر المربع (د.أ)",
-      placeholder: "مثال: 15",
-      type: "number",
-    },
-    {
-      key: "description",
-      label: "ملاحظات / وصف",
-      placeholder: "أضف وصفاً أو ملاحظات عن القطعة...",
-      full: true,
-      type: "textarea",
-    },
-    {
-      key: "mapUrl",
-      label: "رابط خرائط جوجل",
-      placeholder: "https://maps.app.goo.gl/...",
-      full: true,
-    },
+    { key: "gov", label: "Governorate *", type: "select", options: GOVS, optionLabels: GOV_EN, full: true },
+    { key: "dist", label: "Registration Directorate", placeholder: "e.g. Irbid Lands" },
+    { key: "village", label: "Village *", placeholder: "e.g. Bushra" },
+    { key: "basin", label: "Basin Name", placeholder: "e.g. Al-Baydar" },
+    { key: "basinNo", label: "Basin No.", placeholder: "e.g. 28", type: "number" },
+    { key: "hood", label: "District No.", placeholder: "e.g. 2", type: "number" },
+    { key: "board", label: "Board No.", placeholder: "e.g. 7", type: "number" },
+    { key: "plot", label: "Plot No. *", placeholder: "e.g. 9", type: "number" },
+    { key: "area", label: "Area (m²) *", placeholder: "e.g. 870.43", type: "number" },
+    { key: "share", label: "Share", placeholder: "e.g. 1/1 or 0.5" },
+    { key: "ppm", label: "Price per m² (JOD)", placeholder: "e.g. 15", type: "number" },
+    { key: "description", label: "Notes / Description", placeholder: "Add any notes about this plot...", full: true, type: "textarea" },
+    { key: "mapUrl", label: "Google Maps Link", placeholder: "https://maps.app.goo.gl/...", full: true },
   ];
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(6px)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        dir="rtl"
-        style={{
-          background: "linear-gradient(135deg,#1a1207,#0f172a)",
-          borderRadius: 20,
-          maxWidth: 600,
-          width: "100%",
-          maxHeight: "92vh",
-          overflow: "auto",
-          boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}
-      >
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: 12, maxWidth: 620, width: "100%", maxHeight: "92vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
         {/* Header */}
-        <div
-          style={{
-            padding: "24px 28px 18px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e3a5f", borderRadius: "12px 12px 0 0" }}>
           <div>
-            <h2
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: "#fbbf24",
-                margin: 0,
-              }}
-            >
-              {editData ? "تعديل بيانات الأرض" : "إضافة أرض جديدة"}
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "white", margin: 0 }}>
+              {editData ? "Edit Listing" : "Add New Listing"}
             </h2>
-            <p
-              style={{
-                fontSize: 12,
-                color: "#94a3b8",
-                margin: "4px 0 0",
-              }}
-            >
-              {editData ? "عدّل البيانات ثم اضغط حفظ" : "أدخل بيانات القطعة لعرضها على المنصة"}
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>
+              {editData ? "Update the details below" : "Enter the land details to list on the platform"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              border: "none",
-              color: "white",
-              borderRadius: 8,
-              width: 34,
-              height: 34,
-              cursor: "pointer",
-              fontSize: 16,
-            }}
-          >
-            ✕
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 6, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>
+            ×
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "20px 28px 28px" }}>
+        <form onSubmit={handleSubmit} style={{ padding: "20px 24px 24px" }}>
           {error && (
-            <div
-              style={{
-                background: "rgba(239,68,68,0.15)",
-                border: "1px solid rgba(239,68,68,0.3)",
-                borderRadius: 10,
-                padding: "10px 14px",
-                marginBottom: 16,
-                fontSize: 12,
-                color: "#fca5a5",
-                textAlign: "center",
-              }}
-            >
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#dc2626" }}>
               {error}
             </div>
           )}
-
           {success && (
-            <div
-              style={{
-                background: "rgba(34,197,94,0.15)",
-                border: "1px solid rgba(34,197,94,0.3)",
-                borderRadius: 10,
-                padding: "14px",
-                marginBottom: 16,
-                fontSize: 13,
-                color: "#86efac",
-                textAlign: "center",
-                fontWeight: 700,
-              }}
-            >
-              تم إضافة الأرض بنجاح!
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 14, color: "#059669", fontWeight: 600, textAlign: "center" }}>
+              {editData ? "Updated successfully!" : "Listing added successfully!"}
             </div>
           )}
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "14px 16px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
             {fields.map((f) => (
-              <div
-                key={f.key}
-                style={f.full ? { gridColumn: "1 / -1" } : undefined}
-              >
+              <div key={f.key} style={f.full ? { gridColumn: "1 / -1" } : undefined}>
                 <label style={labelStyle}>{f.label}</label>
                 {f.type === "textarea" ? (
                   <textarea
-                    value={form[f.key]}
-                    onChange={(e) => set(f.key, e.target.value)}
-                    placeholder={f.placeholder || ""}
-                    rows={3}
+                    value={form[f.key]} onChange={(e) => set(f.key, e.target.value)}
+                    placeholder={f.placeholder || ""} rows={3}
                     style={{ ...inputStyle, resize: "vertical", minHeight: 70 }}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = "rgba(217,119,6,0.5)")
-                    }
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "rgba(255,255,255,0.12)")
-                    }
+                    onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
                   />
                 ) : f.type === "select" ? (
                   <select
-                    value={form[f.key]}
-                    onChange={(e) => set(f.key, e.target.value)}
-                    style={{
-                      ...inputStyle,
-                      cursor: "pointer",
-                      appearance: "none",
-                    }}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = "rgba(217,119,6,0.5)")
-                    }
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "rgba(255,255,255,0.12)")
-                    }
+                    value={form[f.key]} onChange={(e) => set(f.key, e.target.value)}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                    onFocus={(e) => { e.target.style.borderColor = "#2563eb"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#d1d5db"; }}
                   >
-                    <option value="" style={{ background: "#1e293b" }}>
-                      — اختر —
-                    </option>
+                    <option value="">-- Select --</option>
                     {f.options.map((o) => (
-                      <option key={o} value={o} style={{ background: "#1e293b" }}>
-                        {o}
-                      </option>
+                      <option key={o} value={o}>{f.optionLabels?.[o] || o}</option>
                     ))}
                   </select>
                 ) : (
                   <input
                     type={f.type === "number" ? "text" : "text"}
                     inputMode={f.type === "number" ? "decimal" : "text"}
-                    value={form[f.key]}
-                    onChange={(e) => set(f.key, e.target.value)}
-                    placeholder={f.placeholder || ""}
-                    style={inputStyle}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = "rgba(217,119,6,0.5)")
-                    }
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "rgba(255,255,255,0.12)")
-                    }
+                    value={form[f.key]} onChange={(e) => set(f.key, e.target.value)}
+                    placeholder={f.placeholder || ""} style={inputStyle}
+                    onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
                   />
                 )}
               </div>
@@ -368,68 +182,20 @@ export default function UploadLand({ onClose, onSuccess, editData }) {
 
           {/* Price preview */}
           {form.area && form.ppm && (
-            <div
-              style={{
-                marginTop: 16,
-                background: "rgba(217,119,6,0.1)",
-                border: "1px solid rgba(217,119,6,0.2)",
-                borderRadius: 10,
-                padding: "12px 16px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 600 }}>
-                السعر الإجمالي المتوقع
-              </span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: "#fbbf24" }}>
-                {(
-                  (parseFloat(form.area) || 0) * (parseFloat(form.ppm) || 0)
-                ).toLocaleString("en-US", { maximumFractionDigits: 0 })}{" "}
-                د.أ
+            <div style={{ marginTop: 16, background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: "#0369a1", fontWeight: 500 }}>Estimated Total Price</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: "#1e3a5f" }}>
+                {((parseFloat(form.area) || 0) * (parseFloat(form.ppm) || 0)).toLocaleString("en-US", { maximumFractionDigits: 0 })} JOD
               </span>
             </div>
           )}
 
           <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                flex: 1,
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                borderRadius: 10,
-                padding: "13px",
-                color: "#94a3b8",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              إلغاء
+            <button type="button" onClick={onClose} style={{ flex: 1, background: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: 8, padding: "12px", color: "#374151", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+              Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading || success}
-              style={{
-                flex: 2,
-                background:
-                  loading || success
-                    ? "#92400e"
-                    : "linear-gradient(135deg,#d97706,#b45309)",
-                border: "none",
-                borderRadius: 10,
-                padding: "13px",
-                color: "white",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: loading || success ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 16px rgba(217,119,6,0.3)",
-              }}
-            >
-              {loading ? "جارٍ الحفظ..." : success ? "تم!" : editData ? "حفظ التعديلات" : "إضافة الأرض"}
+            <button type="submit" disabled={loading || success} style={{ flex: 2, background: loading || success ? "#93c5fd" : "#2563eb", border: "none", borderRadius: 8, padding: "12px", color: "white", fontSize: 14, fontWeight: 600, cursor: loading || success ? "not-allowed" : "pointer" }}>
+              {loading ? "Saving..." : success ? "Done!" : editData ? "Save Changes" : "Add Listing"}
             </button>
           </div>
         </form>

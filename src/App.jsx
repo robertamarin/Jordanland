@@ -434,138 +434,112 @@ const R=[
 ];
 const LOTS=R.map(r=>({id:r.id,gov:r.g,dist:r.d,village:r.v,basinNo:r.bn,basin:r.b,hood:r.h,board:r.bd,plot:r.p,area:r.a,share:r.s,ppm:r.pm,price:r.pr,mapUrl:r.mu,pic:r.pi}));
 
+const F="'Inter','Segoe UI',system-ui,-apple-system,sans-serif";
 const fmt=n=>n?n.toLocaleString("en-US",{maximumFractionDigits:2}):"—";
-const fmtJOD=n=>n>0?n.toLocaleString("en-US",{maximumFractionDigits:0})+" د.أ":"اتصل بنا";
+const fmtJOD=n=>n>0?n.toLocaleString("en-US",{maximumFractionDigits:0})+" JOD":"Contact us";
 
-const GC={"محافظة اربد":{bg:"#fef3c7",br:"#f59e0b",tx:"#92400e",dk:"#d97706"},"محافظة البلقاء":{bg:"#dbeafe",br:"#3b82f6",tx:"#1e40af",dk:"#2563eb"},"محافظة الزرقاء":{bg:"#dcfce7",br:"#22c55e",tx:"#166534",dk:"#16a34a"},"محافظة العاصمة":{bg:"#fce7f3",br:"#ec4899",tx:"#9d174d",dk:"#db2777"},"محافظة العقبة":{bg:"#e0e7ff",br:"#6366f1",tx:"#3730a3",dk:"#4f46e5"},"محافظة الكرك":{bg:"#fef9c3",br:"#eab308",tx:"#854d0e",dk:"#ca8a04"},"محافظة المفرق":{bg:"#d1fae5",br:"#10b981",tx:"#065f46",dk:"#059669"},"محافظة جرش":{bg:"#ede9fe",br:"#8b5cf6",tx:"#5b21b6",dk:"#7c3aed"},"محافظة عجلون":{bg:"#ffedd5",br:"#f97316",tx:"#9a3412",dk:"#ea580c"}};
-const gc=g=>GC[g]||{bg:"#f1f5f9",br:"#94a3b8",tx:"#475569",dk:"#64748b"};
+const GOV_EN={"محافظة اربد":"Irbid","محافظة البلقاء":"Balqa","محافظة الزرقاء":"Zarqa","محافظة العاصمة":"Amman","محافظة العقبة":"Aqaba","محافظة الكرك":"Karak","محافظة المفرق":"Mafraq","محافظة جرش":"Jerash","محافظة عجلون":"Ajloun","محافظة مادبا":"Madaba","محافظة معان":"Ma'an","محافظة الطفيلة":"Tafilah"};
+const govEN=g=>GOV_EN[g]||g.replace("محافظة ","");
 
-function FilterSelect({label,icon,value,options,onChange,disabled,count}){
-  return <div style={{marginBottom:11}}>
-    <label style={{display:"flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:700,color:disabled?"#94a3b8":"#475569",marginBottom:4}}>
-      <span style={{fontSize:13}}>{icon}</span>{label}
-      {count!==undefined&&<span style={{background:"#f59e0b20",color:"#92400e",fontSize:9,padding:"1px 7px",borderRadius:10,fontWeight:700}}>{count}</span>}
+/* ── Reusable Sub-Components ─────────────────────────── */
+
+function FilterSelect({label,value,options,onChange,disabled,count}){
+  return <div style={{marginBottom:14}}>
+    <label style={{display:"block",fontSize:12,fontWeight:500,color:disabled?"#9ca3af":"#374151",marginBottom:5}}>
+      {label}
+      {count!==undefined&&<span style={{marginLeft:6,background:"#f3f4f6",color:"#6b7280",fontSize:11,padding:"1px 8px",borderRadius:10,fontWeight:600}}>{count}</span>}
     </label>
     <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}
-      style={{width:"100%",border:"1.5px solid "+(disabled?"#e2e8f0":"#d9770660"),borderRadius:9,padding:"9px 11px",fontSize:12.5,fontWeight:500,background:disabled?"#f8fafc":"white",color:value?"#1e293b":"#94a3b8",cursor:disabled?"not-allowed":"pointer",outline:"none",boxSizing:"border-box"}}>
-      <option value="">— الكل —</option>
-      {options.map(o=><option key={o} value={o}>{o}</option>)}
+      style={{width:"100%",border:"1px solid "+(disabled?"#e5e7eb":"#d1d5db"),borderRadius:8,padding:"9px 12px",fontSize:13,fontWeight:500,background:disabled?"#f9fafb":"white",color:value?"#111827":"#9ca3af",cursor:disabled?"not-allowed":"pointer",outline:"none",boxSizing:"border-box",transition:"border-color 0.2s"}}>
+      <option value="">All</option>
+      {options.map(o=><option key={o} value={o}>{govEN(o)==o?o:govEN(o)}</option>)}
     </select>
   </div>;
 }
 
 function LotCard({lot,isFav,toggleFav,isComp,toggleComp,onDetail}){
-  const c=gc(lot.gov);
-  const hasMap=!!lot.mapUrl;
-  const hasPic=!!lot.pic;
-  return <div onClick={()=>onDetail(lot)} style={{background:"white",borderRadius:14,overflow:"hidden",cursor:"pointer",border:isComp?"2.5px solid #3b82f6":"1px solid #e2e8f0",boxShadow:isComp?"0 0 0 3px #3b82f620":"0 2px 8px rgba(0,0,0,0.04)",transition:"all 0.25s",position:"relative"}}>
-    {/* Image area */}
-    <div style={{height:hasPic?120:6,background:hasPic?`linear-gradient(135deg,${c.bg},#f8fafc)`:`linear-gradient(90deg,${c.dk},${c.br})`,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      {hasPic&&<>
-        <div style={{fontSize:11,color:c.tx,fontWeight:600,display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:28}}>🏞️</span>
-          <span>{lot.pic}</span>
-        </div>
-        <div style={{position:"absolute",bottom:0,left:0,right:0,height:30,background:"linear-gradient(transparent,rgba(255,255,255,0.8))"}}/>
-      </>}
-      {hasMap&&<div style={{position:"absolute",top:hasPic?8:undefined,bottom:hasPic?undefined:8,left:8,background:"#4285f4",color:"white",fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:6,display:"flex",alignItems:"center",gap:3,zIndex:2}}>📍 موقع</div>}
-    </div>
+  return <div onClick={()=>onDetail(lot)} style={{background:"white",borderRadius:10,overflow:"hidden",cursor:"pointer",border:isComp?"2px solid #2563eb":"1px solid #e5e7eb",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",transition:"all 0.2s",position:"relative"}}
+    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 25px rgba(0,0,0,0.1)";}}
+    onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.06)";}}>
+    {/* Accent bar */}
+    <div style={{height:3,background:"#1e3a5f"}}/>
     {/* Header */}
-    <div style={{padding:"12px 14px 8px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
-        <div style={{background:c.bg,color:c.tx,fontSize:9.5,fontWeight:700,padding:"2px 8px",borderRadius:6,border:`1px solid ${c.br}40`}}>
-          {lot.gov.replace("محافظة ","")}
-        </div>
+    <div style={{padding:"14px 16px 10px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <span style={{background:"#f3f4f6",color:"#374151",fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:4}}>{govEN(lot.gov)}</span>
         <div style={{display:"flex",gap:4}}>
-          <button onClick={e=>{e.stopPropagation();toggleComp(lot.id)}} style={{background:isComp?"#3b82f6":"#f1f5f9",color:isComp?"white":"#64748b",border:"none",borderRadius:5,width:26,height:26,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}} title="مقارنة">⚖️</button>
-          <button onClick={e=>{e.stopPropagation();toggleFav(lot.id)}} style={{background:isFav?"#fef2f2":"#f1f5f9",border:"none",borderRadius:5,width:26,height:26,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}} title="المفضلة">{isFav?"❤️":"🤍"}</button>
+          <button onClick={e=>{e.stopPropagation();toggleComp(lot.id)}} style={{background:isComp?"#2563eb":"#f9fafb",color:isComp?"white":"#9ca3af",border:isComp?"none":"1px solid #e5e7eb",borderRadius:4,width:28,height:28,cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}} title="Compare">{isComp?"C":"C"}</button>
+          <button onClick={e=>{e.stopPropagation();toggleFav(lot.id)}} style={{background:isFav?"#fef2f2":"#f9fafb",color:isFav?"#dc2626":"#9ca3af",border:isFav?"1px solid #fecaca":"1px solid #e5e7eb",borderRadius:4,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}} title="Save">{isFav?"\u2665":"\u2661"}</button>
         </div>
       </div>
-      <div style={{fontSize:14,fontWeight:800,color:"#1e293b",marginBottom:2}}>قطعة رقم {lot.plot}</div>
-      <div style={{fontSize:11.5,color:"#64748b",lineHeight:1.5}}>{lot.village} — حوض {lot.basin}</div>
-      <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{lot.dist}</div>
+      <div style={{fontSize:16,fontWeight:700,color:"#111827",marginBottom:3,lineHeight:1.3}}>Plot #{lot.plot} — {lot.village}</div>
+      <div style={{fontSize:12,color:"#6b7280"}}>{lot.basin}{lot.dist?" \u00B7 "+lot.dist.replace("اراضي ",""):""}</div>
     </div>
-    {/* Data */}
-    <div style={{padding:"6px 14px 10px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-      {[["المساحة",fmt(lot.area)+" م²"],["سعر/م²",lot.ppm>0?fmt(lot.ppm)+" د.أ":"—"],["الحصة",lot.share||"—"],["الحوض",lot.basinNo||"—"]].map(([l,v],i)=>
-        <div key={i} style={{background:"#f8fafc",borderRadius:7,padding:"6px 8px"}}>
-          <div style={{fontSize:8.5,color:"#94a3b8",fontWeight:600}}>{l}</div>
-          <div style={{fontSize:12,fontWeight:700,color:"#1e293b"}}>{v}</div>
+    {/* Stats */}
+    <div style={{padding:"4px 16px 12px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+      {[["Area",fmt(lot.area)+" m\u00B2"],["Price/m\u00B2",lot.ppm>0?fmt(lot.ppm)+" JOD":"\u2014"],["Share",lot.share||"\u2014"],["Basin #",lot.basinNo||"\u2014"]].map(([l,v],i)=>
+        <div key={i} style={{background:"#f9fafb",borderRadius:6,padding:"6px 10px"}}>
+          <div style={{fontSize:10,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
+          <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{v}</div>
         </div>
       )}
     </div>
-    {/* Price */}
-    <div style={{padding:"10px 14px",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    {/* Price + CTA */}
+    <div style={{padding:"12px 16px",borderTop:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div>
-        <div style={{fontSize:8.5,color:"#94a3b8"}}>السعر الإجمالي</div>
-        <div style={{fontSize:16,fontWeight:800,color:lot.price>0?"#b45309":"#64748b"}}>{fmtJOD(lot.price)}</div>
+        <div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.5px"}}>Total Price</div>
+        <div style={{fontSize:18,fontWeight:700,color:lot.price>0?"#1e3a5f":"#6b7280"}}>{fmtJOD(lot.price)}</div>
       </div>
-      <div style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",fontSize:10.5,fontWeight:700,padding:"7px 14px",borderRadius:7,boxShadow:"0 2px 8px rgba(217,119,6,0.3)"}}>تفاصيل ←</div>
+      <span style={{color:"#2563eb",fontSize:13,fontWeight:600}}>View Details \u2192</span>
     </div>
   </div>;
 }
 
 function DetailModal({lot,onClose}){
   if(!lot)return null;
-  const c=gc(lot.gov);
-  const waMsg=encodeURIComponent(`مرحباً، أرغب بالاستفسار عن:\nقطعة رقم ${lot.plot}\n${lot.village} — حوض ${lot.basin}\n${lot.gov} / ${lot.dist}\nالمساحة: ${fmt(lot.area)} م²\nالسعر: ${fmtJOD(lot.price)}`);
-  const rows=[["المحافظة",lot.gov],["مديرية التسجيل",lot.dist],["القرية",lot.village],["رقم الحوض",lot.basinNo||"—"],["اسم الحوض",lot.basin],["رقم الحي",lot.hood||"—"],["رقم اللوحة",lot.board||"—"],["رقم القطعة",lot.plot],["المساحة",fmt(lot.area)+" م²"],["الحصة",lot.share||"—"],["سعر المتر المربع",lot.ppm>0?fmt(lot.ppm)+" د.أ":"—"],["السعر الإجمالي",fmtJOD(lot.price)]];
-  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:20,maxWidth:640,width:"100%",maxHeight:"92vh",overflow:"auto",boxShadow:"0 25px 50px rgba(0,0,0,0.25)"}}>
+  const waMsg=encodeURIComponent(`Hi, I'm interested in:\nPlot #${lot.plot}\n${lot.village} — Basin: ${lot.basin}\n${govEN(lot.gov)} / ${lot.dist}\nArea: ${fmt(lot.area)} m\u00B2\nPrice: ${fmtJOD(lot.price)}`);
+  const rows=[["Governorate",govEN(lot.gov)+" ("+lot.gov+")"],["Directorate",lot.dist],["Village",lot.village],["Basin No.",lot.basinNo||"\u2014"],["Basin Name",lot.basin],["District No.",lot.hood||"\u2014"],["Board No.",lot.board||"\u2014"],["Plot No.",lot.plot],["Area",fmt(lot.area)+" m\u00B2"],["Share",lot.share||"\u2014"],["Price/m\u00B2",lot.ppm>0?fmt(lot.ppm)+" JOD":"\u2014"],["Total Price",fmtJOD(lot.price)]];
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:12,maxWidth:640,width:"100%",maxHeight:"92vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
       {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${c.dk},${c.dk}dd)`,padding:"24px 24px 20px",borderRadius:"20px 20px 0 0",position:"relative"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,left:14,background:"rgba(255,255,255,0.2)",border:"none",color:"white",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:16}}>✕</button>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",fontWeight:600,marginBottom:2}}>Ref #{lot.id} — قطعة أرض للبيع</div>
-        <div style={{fontSize:26,fontWeight:800,color:"white",marginBottom:4}}>قطعة رقم {lot.plot}</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.85)"}}>{lot.village} — حوض {lot.basin} — {lot.gov}</div>
-        {/* Image placeholder */}
-        {lot.pic&&<div style={{marginTop:14,background:"rgba(255,255,255,0.1)",borderRadius:10,padding:"16px 20px",display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:24}}>🏞️</span>
-          <div>
-            <div style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>صورة القطعة</div>
-            <div style={{fontSize:13,fontWeight:700,color:"white"}}>{lot.pic}</div>
-          </div>
-        </div>}
-        {/* Stats */}
-        <div style={{marginTop:14,display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[["المساحة",fmt(lot.area)+" م²","white"],["السعر",fmtJOD(lot.price),"#fbbf24"],["سعر/م²",lot.ppm>0?fmt(lot.ppm):"—","white"]].map(([l,v,cl],i)=>
-            <div key={i} style={{background:"rgba(255,255,255,0.12)",borderRadius:9,padding:"9px 14px",minWidth:80}}>
-              <div style={{fontSize:8.5,color:"rgba(255,255,255,0.5)"}}>{l}</div>
-              <div style={{fontSize:16,fontWeight:800,color:cl}}>{v}</div>
+      <div style={{padding:"24px 28px 20px",borderBottom:"1px solid #e5e7eb",position:"relative"}}>
+        <button onClick={onClose} style={{position:"absolute",top:16,right:16,background:"#f3f4f6",border:"none",color:"#6b7280",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>{"\u00D7"}</button>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:4}}>{govEN(lot.gov)} {">"} {lot.village} {">"} {lot.basin}</div>
+        <div style={{fontSize:28,fontWeight:700,color:"#111827",marginBottom:12}}>Plot #{lot.plot}</div>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          {[["Area",fmt(lot.area)+" m\u00B2"],["Total Price",fmtJOD(lot.price)],["Price/m\u00B2",lot.ppm>0?fmt(lot.ppm)+" JOD":"\u2014"]].map(([l,v],i)=>
+            <div key={i} style={{background:"#f8fafc",borderRadius:8,padding:"10px 16px",border:"1px solid #e5e7eb",minWidth:100}}>
+              <div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:2}}>{l}</div>
+              <div style={{fontSize:18,fontWeight:700,color:i===1&&lot.price>0?"#1e3a5f":"#111827"}}>{v}</div>
             </div>
           )}
         </div>
       </div>
-      {/* Map Link */}
-      {lot.mapUrl&&<a href={lot.mapUrl} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,margin:"16px 24px 0",padding:"14px 18px",background:"linear-gradient(135deg,#e8f0fe,#d2e3fc)",borderRadius:12,textDecoration:"none",border:"1.5px solid #4285f440"}}>
-        <span style={{fontSize:24}}>🗺️</span>
+      {/* Map */}
+      {lot.mapUrl&&<a href={lot.mapUrl} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,margin:"16px 28px 0",padding:"12px 16px",background:"#f0f9ff",borderRadius:8,textDecoration:"none",border:"1px solid #bae6fd"}}>
         <div style={{flex:1}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#1a73e8"}}>عرض الموقع على خرائط جوجل</div>
-          <div style={{fontSize:10,color:"#5f6368",marginTop:2}}>View on Google Maps</div>
+          <div style={{fontSize:14,fontWeight:600,color:"#0369a1"}}>View on Google Maps {"\u2192"}</div>
+          <div style={{fontSize:11,color:"#6b7280",marginTop:1}}>See exact location on map</div>
         </div>
-        <span style={{fontSize:18,color:"#1a73e8"}}>↗</span>
       </a>}
-      {/* Detail Table */}
-      <div style={{padding:"20px 24px 24px"}}>
-        <h3 style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{width:26,height:26,borderRadius:7,background:c.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>📋</span>
-          تفاصيل القطعة الكاملة
-        </h3>
-        <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #e2e8f0"}}>
+      {/* Table */}
+      <div style={{padding:"20px 28px 28px"}}>
+        <h3 style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:12}}>Property Details</h3>
+        <div style={{borderRadius:8,overflow:"hidden",border:"1px solid #e5e7eb"}}>
           {rows.map(([label,val],i)=>
-            <div key={i} style={{display:"flex",borderBottom:i<rows.length-1?"1px solid #f1f5f9":"none",background:i%2===0?"#fafafa":"white"}}>
-              <div style={{flex:"0 0 40%",padding:"9px 14px",fontSize:11.5,fontWeight:600,color:"#64748b",borderLeft:"1px solid #f1f5f9"}}>{label}</div>
-              <div style={{flex:1,padding:"9px 14px",fontSize:12.5,fontWeight:i===rows.length-1?800:600,color:i===rows.length-1?"#b45309":"#1e293b"}}>{val}</div>
+            <div key={i} style={{display:"flex",borderBottom:i<rows.length-1?"1px solid #f3f4f6":"none",background:i%2===0?"#f9fafb":"white"}}>
+              <div style={{flex:"0 0 40%",padding:"10px 16px",fontSize:13,fontWeight:500,color:"#6b7280"}}>{label}</div>
+              <div style={{flex:1,padding:"10px 16px",fontSize:13,fontWeight:i===rows.length-1?700:500,color:i===rows.length-1?"#1e3a5f":"#111827"}}>{val}</div>
             </div>
           )}
         </div>
         {/* CTAs */}
         <div style={{marginTop:20,display:"flex",gap:10,flexWrap:"wrap"}}>
-          <a href={`https://wa.me/962778445424?text=${waMsg}`} target="_blank" rel="noreferrer" style={{flex:1,minWidth:180,background:"#25D366",color:"white",textAlign:"center",padding:"13px 18px",borderRadius:11,fontSize:13,fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 4px 12px rgba(37,211,102,0.3)"}}>
-            <span style={{fontSize:16}}>💬</span>واتساب
+          <a href={`https://wa.me/962778445424?text=${waMsg}`} target="_blank" rel="noreferrer" style={{flex:1,minWidth:160,background:"#25D366",color:"white",textAlign:"center",padding:"12px 18px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>
+            WhatsApp
           </a>
-          <a href="tel:+962778445424" style={{flex:1,minWidth:180,background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",textAlign:"center",padding:"13px 18px",borderRadius:11,fontSize:13,fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 4px 12px rgba(217,119,6,0.3)"}}>
-            <span style={{fontSize:16}}>📞</span>اتصل الآن
+          <a href="tel:+962778445424" style={{flex:1,minWidth:160,background:"#1e3a5f",color:"white",textAlign:"center",padding:"12px 18px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>
+            Call Now
           </a>
         </div>
       </div>
@@ -575,29 +549,29 @@ function DetailModal({lot,onClose}){
 
 function CompareModal({lots,onClose}){
   if(!lots.length)return null;
-  const fields=[["gov","المحافظة"],["dist","مديرية التسجيل"],["village","القرية"],["basin","الحوض"],["basinNo","رقم الحوض"],["plot","رقم القطعة"],["area","المساحة (م²)"],["share","الحصة"],["ppm","سعر/م²"],["price","السعر الإجمالي"]];
-  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:20,maxWidth:Math.min(lots.length*220+200,900),width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 25px 50px rgba(0,0,0,0.25)"}}>
-      <div style={{padding:"20px 24px",borderBottom:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h2 style={{fontSize:18,fontWeight:800,color:"#1e293b"}}>⚖️ مقارنة ({lots.length})</h2>
-        <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:14}}>✕</button>
+  const fields=[["gov","Governorate",v=>govEN(v)],["dist","Directorate"],["village","Village"],["basin","Basin"],["basinNo","Basin #"],["plot","Plot #"],["area","Area (m\u00B2)",v=>fmt(v)+" m\u00B2"],["share","Share"],["ppm","Price/m\u00B2",v=>v>0?fmt(v)+" JOD":"\u2014"],["price","Total Price",v=>fmtJOD(v)]];
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:12,maxWidth:Math.min(lots.length*200+220,900),width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{padding:"20px 24px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <h2 style={{fontSize:18,fontWeight:700,color:"#111827",margin:0}}>Compare Properties ({lots.length})</h2>
+        <button onClick={onClose} style={{background:"#f3f4f6",border:"none",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:16,color:"#6b7280"}}>{"\u00D7"}</button>
       </div>
       <div style={{overflow:"auto",padding:"16px 24px 24px"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead><tr>
-            <th style={{textAlign:"right",padding:"8px 10px",background:"#f8fafc",borderBottom:"2px solid #e2e8f0",fontWeight:700,color:"#64748b",position:"sticky",right:0,minWidth:110,zIndex:1}}>البيان</th>
-            {lots.map(l=><th key={l.id} style={{textAlign:"center",padding:"8px 10px",background:"#f8fafc",borderBottom:"2px solid #e2e8f0",fontWeight:800,color:"#1e293b",minWidth:130}}>قطعة {l.plot}<br/><span style={{fontSize:10,fontWeight:500,color:"#64748b"}}>{l.village}</span></th>)}
+            <th style={{textAlign:"left",padding:"10px 12px",background:"#f9fafb",borderBottom:"2px solid #e5e7eb",fontWeight:600,color:"#6b7280",position:"sticky",left:0,minWidth:110,zIndex:1}}>Property</th>
+            {lots.map(l=><th key={l.id} style={{textAlign:"center",padding:"10px 12px",background:"#f9fafb",borderBottom:"2px solid #e5e7eb",fontWeight:700,color:"#111827",minWidth:140}}>Plot #{l.plot}<br/><span style={{fontSize:11,fontWeight:400,color:"#6b7280"}}>{l.village}</span></th>)}
           </tr></thead>
-          <tbody>{fields.map(([f,label],i)=>{
+          <tbody>{fields.map(([f,label,formatter],i)=>{
             const nums=["price","area","ppm"];const isNum=nums.includes(f);
             const vals=lots.map(l=>l[f]);
             const best=isNum?((f==="price"?Math.min:Math.max)(...vals.filter(v=>typeof v==="number"&&v>0))):null;
-            return <tr key={f} style={{background:i%2===0?"white":"#fafafa"}}>
-              <td style={{padding:"8px 10px",fontWeight:600,color:"#64748b",borderBottom:"1px solid #f1f5f9",position:"sticky",right:0,background:i%2===0?"white":"#fafafa",zIndex:1}}>{label}</td>
+            return <tr key={f} style={{background:i%2===0?"white":"#f9fafb"}}>
+              <td style={{padding:"10px 12px",fontWeight:500,color:"#6b7280",borderBottom:"1px solid #f3f4f6",position:"sticky",left:0,background:i%2===0?"white":"#f9fafb",zIndex:1}}>{label}</td>
               {lots.map(l=>{
                 const v=l[f];const isBest=isNum&&v===best&&v>0;
-                return <td key={l.id} style={{padding:"8px 10px",textAlign:"center",borderBottom:"1px solid #f1f5f9",fontWeight:isBest?800:500,color:isBest?"#059669":f==="price"&&v>0?"#b45309":"#1e293b",background:isBest?"#f0fdf4":"transparent"}}>
-                  {f==="price"?fmtJOD(v):f==="area"?fmt(v)+" م²":f==="ppm"&&v>0?fmt(v)+" د.أ":String(v||"—")}
+                return <td key={l.id} style={{padding:"10px 12px",textAlign:"center",borderBottom:"1px solid #f3f4f6",fontWeight:isBest?700:500,color:isBest?"#059669":"#111827"}}>
+                  {formatter?formatter(v):String(v||"\u2014")}
                 </td>;
               })}
             </tr>;
@@ -607,6 +581,28 @@ function CompareModal({lots,onClose}){
     </div>
   </div>;
 }
+
+function FavModal({lots,onClose,onDetail,toggleFav}){
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:12,maxWidth:500,width:"100%",maxHeight:"80vh",overflow:"auto",padding:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <h2 style={{fontSize:18,fontWeight:700,color:"#111827",margin:0}}>Saved Properties ({lots.length})</h2>
+        <button onClick={onClose} style={{background:"#f3f4f6",border:"none",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:16,color:"#6b7280"}}>{"\u00D7"}</button>
+      </div>
+      {lots.length===0?<p style={{color:"#9ca3af",fontSize:14,textAlign:"center",padding:"20px 0"}}>No saved properties yet</p>:
+        lots.map(l=><div key={l.id} onClick={()=>onDetail(l)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:"1px solid #f3f4f6",cursor:"pointer"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>Plot #{l.plot} — {l.village}</div>
+            <div style={{fontSize:12,color:"#6b7280"}}>{govEN(l.gov)} | {fmt(l.area)} m{"\u00B2"} | {fmtJOD(l.price)}</div>
+          </div>
+          <button onClick={e=>{e.stopPropagation();toggleFav(l.id)}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"5px 12px",color:"#dc2626",cursor:"pointer",fontSize:12,fontWeight:500}}>Remove</button>
+        </div>)
+      }
+    </div>
+  </div>;
+}
+
+/* ── Main Component ──────────────────────────────────── */
 
 export default function JordanLand({ user }){
   const [page,setPage]=useState("home");
@@ -628,7 +624,7 @@ export default function JordanLand({ user }){
 
   useEffect(()=>{
     const unsub=onSnapshot(collection(db,"lands"),(snap)=>{
-      const lands=snap.docs.map((d_doc,i)=>{const d=d_doc.data();return{id:"fb_"+d_doc.id,gov:d.gov||"",dist:d.dist||"",village:d.village||"",basinNo:d.basinNo||0,basin:d.basin||"",hood:d.hood||0,board:d.board||0,plot:d.plot||0,area:d.area||0,share:d.share||"1/1",ppm:d.ppm||0,price:d.price||0,mapUrl:d.mapUrl||"",pic:d.pic||"",uid:d.uid||"",description:d.description||"",userSubmitted:true};});
+      const lands=snap.docs.map((d_doc)=>{const d=d_doc.data();return{id:"fb_"+d_doc.id,gov:d.gov||"",dist:d.dist||"",village:d.village||"",basinNo:d.basinNo||0,basin:d.basin||"",hood:d.hood||0,board:d.board||0,plot:d.plot||0,area:d.area||0,share:d.share||"1/1",ppm:d.ppm||0,price:d.price||0,mapUrl:d.mapUrl||"",pic:d.pic||"",uid:d.uid||"",description:d.description||"",userSubmitted:true};});
       setFbLands(lands);
     });
     return unsub;
@@ -637,10 +633,7 @@ export default function JordanLand({ user }){
   useEffect(()=>{
     if(!user?.uid)return;
     const fetchProfile=async()=>{
-      try{
-        const snap=await getDoc(doc(db,"users",user.uid));
-        if(snap.exists())setUserProfile(snap.data());
-      }catch(e){console.error("Error fetching user profile:",e);}
+      try{const snap=await getDoc(doc(db,"users",user.uid));if(snap.exists())setUserProfile(snap.data());}catch(e){console.error(e);}
     };
     fetchProfile();
   },[user?.uid]);
@@ -656,13 +649,13 @@ export default function JordanLand({ user }){
   const toggleComp=useCallback(id=>setCompIds(p=>p.includes(id)?p.filter(x=>x!==id):p.length<4?[...p,id]:p),[]);
 
   const govs=useMemo(()=>[...new Set(ALL_LOTS.map(l=>l.gov))].sort((a,b)=>a.localeCompare(b,"ar")),[ALL_LOTS]);
-  const dists=useMemo(()=>filters.gov?[...new Set(ALL_LOTS.filter(l=>l.gov===filters.gov).map(l=>l.dist))].sort((a,b)=>a.localeCompare(b,"ar")):[], [filters.gov,ALL_LOTS]);
-  const villages=useMemo(()=>filters.dist?[...new Set(ALL_LOTS.filter(l=>l.dist===filters.dist).map(l=>l.village))].sort((a,b)=>a.localeCompare(b,"ar")):[], [filters.dist,ALL_LOTS]);
-  const basins=useMemo(()=>filters.village?[...new Set(ALL_LOTS.filter(l=>l.village===filters.village).map(l=>l.basin))].sort((a,b)=>a.localeCompare(b,"ar")):[], [filters.village,ALL_LOTS]);
+  const dists=useMemo(()=>filters.gov?[...new Set(ALL_LOTS.filter(l=>l.gov===filters.gov).map(l=>l.dist))].sort((a,b)=>a.localeCompare(b,"ar")):[],[filters.gov,ALL_LOTS]);
+  const villages=useMemo(()=>filters.dist?[...new Set(ALL_LOTS.filter(l=>l.dist===filters.dist).map(l=>l.village))].sort((a,b)=>a.localeCompare(b,"ar")):[],[filters.dist,ALL_LOTS]);
+  const basins=useMemo(()=>filters.village?[...new Set(ALL_LOTS.filter(l=>l.village===filters.village).map(l=>l.basin))].sort((a,b)=>a.localeCompare(b,"ar")):[],[filters.village,ALL_LOTS]);
 
   const filtered=useMemo(()=>{
     let r=ALL_LOTS;
-    if(search){const s=search.trim();r=r.filter(l=>l.gov.includes(s)||l.dist.includes(s)||l.village.includes(s)||l.basin.includes(s)||String(l.plot).includes(s)||l.gov.replace("محافظة ","").includes(s)||l.dist.replace("اراضي ","").replace("محافظة ","").includes(s));}
+    if(search){const s=search.trim().toLowerCase();r=r.filter(l=>l.gov.includes(s)||l.dist.includes(s)||l.village.includes(s)||l.basin.includes(s)||String(l.plot).includes(s)||govEN(l.gov).toLowerCase().includes(s));}
     if(filters.gov)r=r.filter(l=>l.gov===filters.gov);
     if(filters.dist)r=r.filter(l=>l.dist===filters.dist);
     if(filters.village)r=r.filter(l=>l.village===filters.village);
@@ -684,11 +677,7 @@ export default function JordanLand({ user }){
   const myLands=useMemo(()=>{if(!user?.uid)return[];return ALL_LOTS.filter(l=>l.uid===user.uid);},[ALL_LOTS,user?.uid]);
 
   const handleDelete=async(landId)=>{
-    try{
-      const docId=landId.replace("fb_","");
-      await deleteDoc(doc(db,"lands",docId));
-      setDeleteConfirm(null);
-    }catch(err){alert("خطأ في الحذف: "+err.message);}
+    try{const docId=landId.replace("fb_","");await deleteDoc(doc(db,"lands",docId));setDeleteConfirm(null);}catch(err){alert("Error: "+err.message);}
   };
 
   const setFilter=(k,v)=>{
@@ -698,130 +687,130 @@ export default function JordanLand({ user }){
     if(k==="village"){next.basin="";}
     setFilters(next);setPerPage(40);
   };
-  const clearFilters=()=>{setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setSearch("");setPerPage(40);};
+  const defFilters={gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false};
+  const clearFilters=()=>{setFilters(defFilters);setSearch("");setPerPage(40);};
   const activeCount=Object.entries(filters).filter(([k,v])=>typeof v==="boolean"?v:Boolean(v)).length+(search?1:0);
 
-  // Governorate stats
   const govStats=useMemo(()=>govs.map(g=>{const lots=ALL_LOTS.filter(l=>l.gov===g);return{name:g,count:lots.length,villages:[...new Set(lots.map(l=>l.village))],totalValue:lots.reduce((s,l)=>s+l.price,0)};}),[govs,ALL_LOTS]);
 
-  const Navbar=()=><nav style={{background:"linear-gradient(135deg,#1a1207,#0f172a)",padding:"0 20px",height:54,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,borderBottom:"2px solid #d97706",flexShrink:0}}>
-    <div onClick={()=>setPage("home")} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#d97706,#b45309)",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:900,fontSize:14}}>JL</div>
-      <span style={{fontSize:16,fontWeight:800,color:"#fbbf24"}}>أراضي الأردن</span>
-      <span style={{fontSize:10,color:"#94a3b8",fontWeight:500}}>Jordan Land</span>
+  /* ── Navbar ────────────────────────────────── */
+  const Navbar=()=><nav style={{background:"#1e3a5f",padding:"0 32px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,fontFamily:F}}>
+    <div onClick={()=>setPage("home")} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:22,fontWeight:800,color:"white",letterSpacing:"-0.5px"}}>JordanLand</span>
     </div>
-    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-      {userProfile?.displayName&&<span style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginLeft:8}}>مرحباً، <span style={{color:"#fbbf24",fontWeight:700}}>{userProfile.displayName}</span></span>}
-      <button onClick={()=>setShowFavs(true)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:3,position:"relative"}}>
-        ❤️{favs.length>0&&<span style={{background:"#ef4444",color:"white",fontSize:8,fontWeight:800,borderRadius:10,padding:"0px 5px",marginRight:2}}>{favs.length}</span>}
-      </button>
-      {compIds.length>=2&&<button onClick={()=>setShowComp(true)} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600}}>⚖️ قارن ({compIds.length})</button>}
-      <button onClick={()=>setShowUpload(true)} style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:700}}>+ إضافة أرض</button>
-      <button onClick={()=>setPage("my-listings")} style={{background:page==="my-listings"?"linear-gradient(135deg,#8b5cf6,#6d28d9)":"rgba(255,255,255,0.1)",border:"none",borderRadius:7,padding:"5px 12px",color:"white",cursor:"pointer",fontSize:11,fontWeight:600}}>عروضي{myLands.length>0&&<span style={{background:"#8b5cf6",color:"white",fontSize:8,fontWeight:800,borderRadius:10,padding:"0px 5px",marginRight:3}}>{myLands.length}</span>}</button>
-      {page!=="listings"&&<button onClick={()=>setPage("listings")} style={{background:"linear-gradient(135deg,#d97706,#b45309)",border:"none",borderRadius:7,padding:"5px 16px",color:"white",cursor:"pointer",fontSize:11,fontWeight:700}}>تصفح الأراضي</button>}
-      <button onClick={()=>signOut(auth)} style={{background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:7,padding:"5px 12px",color:"#fca5a5",cursor:"pointer",fontSize:11,fontWeight:600}}>خروج</button>
+    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      {page!=="listings"&&<button onClick={()=>setPage("listings")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:13,fontWeight:500,padding:"8px 14px",borderRadius:6,transition:"all 0.2s"}}
+        onMouseEnter={e=>e.target.style.background="rgba(255,255,255,0.1)"} onMouseLeave={e=>e.target.style.background="none"}>Browse</button>}
+      <button onClick={()=>setPage("my-listings")} style={{background:page==="my-listings"?"rgba(255,255,255,0.15)":"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:13,fontWeight:500,padding:"8px 14px",borderRadius:6,transition:"all 0.2s"}}
+        onMouseEnter={e=>e.target.style.background="rgba(255,255,255,0.1)"} onMouseLeave={e=>{if(page!=="my-listings")e.target.style.background="none";}}>My Listings{myLands.length>0?" ("+myLands.length+")":""}</button>
+      <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"#2563eb",border:"none",color:"white",cursor:"pointer",fontSize:13,fontWeight:600,padding:"8px 16px",borderRadius:6,marginLeft:4}}>+ List Your Land</button>
+      <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 8px"}}/>
+      <button onClick={()=>setShowFavs(true)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:15,padding:"8px 10px",borderRadius:6,position:"relative"}}
+        onMouseEnter={e=>e.target.style.background="rgba(255,255,255,0.1)"} onMouseLeave={e=>e.target.style.background="none"}>{"\u2661"}{favs.length>0&&<span style={{position:"absolute",top:2,right:2,background:"#dc2626",color:"white",fontSize:9,fontWeight:700,borderRadius:10,padding:"0 5px",lineHeight:"16px"}}>{favs.length}</span>}</button>
+      {compIds.length>=2&&<button onClick={()=>setShowComp(true)} style={{background:"none",border:"1px solid rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontSize:12,fontWeight:500,padding:"6px 12px",borderRadius:6}}>Compare ({compIds.length})</button>}
+      {userProfile?.displayName&&<span style={{fontSize:13,color:"rgba(255,255,255,0.6)",padding:"0 8px"}}>{userProfile.displayName}</span>}
+      <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:12,fontWeight:500,padding:"8px 10px"}}
+        onMouseEnter={e=>e.target.style.color="rgba(255,255,255,0.9)"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.5)"}>Sign Out</button>
     </div>
   </nav>;
 
-  // ─── HOME ───
-  if(page==="home")return <div dir="rtl" style={{fontFamily:"'Segoe UI','Noto Kufi Arabic',Tahoma,sans-serif",background:"#fafaf8",minHeight:"100vh"}}>
+  /* ── HOME PAGE ─────────────────────────────── */
+  if(page==="home")return <div style={{fontFamily:F,background:"#f8fafc",minHeight:"100vh"}}>
     <Navbar/>
     {/* Hero */}
-    <div style={{background:"linear-gradient(135deg,#1a1207 0%,#0f172a 50%,#1a0e04 100%)",padding:"52px 24px 44px",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-80,left:-80,width:300,height:300,border:"1px solid rgba(217,119,6,0.1)",borderRadius:"50%"}}/>
-      <div style={{position:"absolute",bottom:-40,right:-40,width:200,height:200,border:"1px solid rgba(217,119,6,0.08)",borderRadius:"50%"}}/>
-      <div style={{position:"relative",maxWidth:800,margin:"0 auto"}}>
-        <div style={{fontSize:10,color:"#d97706",fontWeight:700,letterSpacing:3,marginBottom:10}}>JORDAN LAND</div>
-        <h1 style={{fontSize:36,fontWeight:900,color:"white",lineHeight:1.3,marginBottom:6}}>أرضك في الأردن</h1>
-        <h2 style={{fontSize:18,fontWeight:400,color:"#fbbf24",marginBottom:16}}>مئات قطع الأراضي المميزة في كافة المحافظات</h2>
-        <p style={{fontSize:13,color:"#94a3b8",lineHeight:1.8,maxWidth:500,marginBottom:24}}>منصة متكاملة لبيع الأراضي في المملكة الأردنية الهاشمية. ابحث، قارن، واستثمر بثقة.</p>
-        <div style={{background:"rgba(255,255,255,0.08)",backdropFilter:"blur(10px)",borderRadius:13,padding:5,display:"flex",gap:5,border:"1px solid rgba(255,255,255,0.1)",maxWidth:500}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث بالمحافظة، مديرية التسجيل، القرية، أو الحوض..." onKeyDown={e=>{if(e.key==="Enter"){setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setPage("listings");}}}
-            style={{flex:1,background:"rgba(255,255,255,0.06)",borderRadius:9,padding:"11px 14px",fontSize:12.5,color:"white",border:"none",outline:"none"}}/>
-          <button onClick={()=>{setFilters({gov:"",dist:"",village:"",basin:"",priceMin:"",priceMax:"",areaMin:"",areaMax:"",hasMap:false,hasPhoto:false});setPage("listings");}} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",borderRadius:9,padding:"11px 22px",fontSize:12.5,fontWeight:700,border:"none",cursor:"pointer"}}>🔍 بحث</button>
+    <div style={{background:"#1e3a5f",padding:"80px 32px 60px",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:0,right:0,bottom:0,width:"40%",background:"linear-gradient(135deg,rgba(37,99,235,0.1),rgba(30,58,95,0))"}}/>
+      <div style={{position:"relative",maxWidth:900,margin:"0 auto"}}>
+        <div style={{fontSize:34,fontWeight:400,color:"white",lineHeight:1.2,marginBottom:4}}>Find Your Perfect</div>
+        <div style={{fontSize:52,fontWeight:800,color:"white",lineHeight:1.1,marginBottom:16,letterSpacing:"-1px"}}>Land in Jordan</div>
+        <p style={{fontSize:17,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:520,marginBottom:32}}>Browse hundreds of premium land listings across all governorates. Search, compare, and invest with confidence.</p>
+        <div style={{background:"white",borderRadius:50,padding:5,display:"flex",gap:0,maxWidth:560,boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by governorate, village, or basin..." onKeyDown={e=>{if(e.key==="Enter"){setFilters(defFilters);setPage("listings");}}}
+            style={{flex:1,background:"none",borderRadius:45,padding:"14px 24px",fontSize:15,color:"#111827",border:"none",outline:"none"}}/>
+          <button onClick={()=>{setFilters(defFilters);setPage("listings");}} style={{background:"#2563eb",color:"white",borderRadius:45,padding:"14px 32px",fontSize:15,fontWeight:600,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>Search</button>
         </div>
-        <div style={{display:"flex",gap:36,marginTop:28}}>
-          {[[ALL_LOTS.length,"قطعة أرض"],[govs.length,"محافظات"],[ALL_LOTS.filter(l=>l.mapUrl).length,"موقع على الخريطة"],[ALL_LOTS.filter(l=>l.pic).length,"صورة متوفرة"]].map(([n,l],i)=>
-            <div key={i}><div style={{fontSize:24,fontWeight:900,color:"#fbbf24"}}>{n}</div><div style={{fontSize:10,color:"#94a3b8"}}>{l}</div></div>
+        <div style={{display:"flex",gap:32,marginTop:36}}>
+          {[[ALL_LOTS.length+"+","Listings"],[govs.length,"Governorates"],[ALL_LOTS.filter(l=>l.mapUrl).length+"+","Map Locations"],[ALL_LOTS.filter(l=>l.pic).length,"Photos"]].map(([n,l],i)=>
+            <div key={i}><div style={{fontSize:28,fontWeight:700,color:"white"}}>{n}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2}}>{l}</div></div>
           )}
         </div>
       </div>
     </div>
     {/* Governorate Grid */}
-    <div style={{maxWidth:960,margin:"0 auto",padding:"44px 20px"}}>
-      <h2 style={{fontSize:20,fontWeight:800,color:"#1e293b",marginBottom:4}}>تصفح حسب المحافظة</h2>
-      <p style={{fontSize:12,color:"#64748b",marginBottom:20}}>اختر المحافظة لعرض القطع المتوفرة</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280,1fr))",gap:12}}>
-        {govStats.map(g=>{const c=gc(g.name);return <div key={g.name} onClick={()=>{setFilter("gov",g.name);setPage("listings")}} style={{background:`linear-gradient(135deg,${c.bg},white)`,borderRadius:13,padding:"18px 20px",cursor:"pointer",border:`1.5px solid ${c.br}40`,transition:"all 0.2s",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+    <div style={{maxWidth:1000,margin:"0 auto",padding:"56px 32px"}}>
+      <h2 style={{fontSize:26,fontWeight:700,color:"#111827",marginBottom:4}}>Browse by Region</h2>
+      <p style={{fontSize:15,color:"#6b7280",marginBottom:28}}>Select a governorate to explore available listings</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+        {govStats.map(g=><div key={g.name} onClick={()=>{setFilter("gov",g.name);setPage("listings")}} style={{background:"white",borderRadius:10,padding:"22px 24px",cursor:"pointer",border:"1px solid #e5e7eb",transition:"all 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}
+          onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 25px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor="#d1d5db";}}
+          onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)";e.currentTarget.style.borderColor="#e5e7eb";}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <div style={{fontSize:17,fontWeight:800,color:"#1e293b"}}>{g.name.replace("محافظة ","")}</div>
-            <div style={{background:c.dk,color:"white",fontSize:11.5,fontWeight:700,padding:"3px 12px",borderRadius:18}}>{g.count}</div>
+            <div style={{fontSize:20,fontWeight:700,color:"#111827"}}>{govEN(g.name)}</div>
+            <div style={{background:"#1e3a5f",color:"white",fontSize:12,fontWeight:600,padding:"3px 12px",borderRadius:20}}>{g.count}</div>
           </div>
-          <div style={{fontSize:10.5,color:"#64748b",lineHeight:1.7,marginBottom:6}}>{g.villages.slice(0,4).join("، ")}{g.villages.length>4?` +${g.villages.length-4}`:""}</div>
-          {g.totalValue>0&&<div style={{fontSize:10,color:c.tx,fontWeight:600}}>إجمالي القيمة: {fmt(Math.round(g.totalValue))} د.أ</div>}
-        </div>;})}
+          <div style={{fontSize:13,color:"#6b7280",lineHeight:1.6,marginBottom:8}}>{g.villages.slice(0,4).join(", ")}{g.villages.length>4?" +"+( g.villages.length-4)+" more":""}</div>
+          {g.totalValue>0&&<div style={{fontSize:12,color:"#2563eb",fontWeight:600}}>Total value: {fmt(Math.round(g.totalValue))} JOD</div>}
+        </div>)}
       </div>
     </div>
-    {/* Trust */}
-    <div style={{background:"white",padding:"44px 20px",borderTop:"1px solid #e2e8f0"}}>
-      <div style={{maxWidth:960,margin:"0 auto"}}>
-        <h2 style={{fontSize:20,fontWeight:800,color:"#1e293b",marginBottom:20,textAlign:"center"}}>لماذا أراضي الأردن؟</h2>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200,1fr))",gap:16}}>
-          {[["📋","بيانات رسمية","جميع البيانات مطابقة لسجلات دائرة الأراضي"],["🗺️","مواقع على الخريطة","روابط مباشرة لخرائط جوجل للقطع المتوفرة"],["🏞️","صور القطع","صور فعلية للقطع المتاحة للبيع"],["📞","دعم مباشر","تواصل عبر الهاتف أو واتساب"]].map(([icon,title,desc],i)=>
-            <div key={i} style={{textAlign:"center",padding:"22px 14px",background:"#fafaf8",borderRadius:13,border:"1px solid #e2e8f0"}}>
-              <div style={{fontSize:28,marginBottom:10}}>{icon}</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:4}}>{title}</div>
-              <div style={{fontSize:11.5,color:"#64748b",lineHeight:1.6}}>{desc}</div>
+    {/* Why section */}
+    <div style={{background:"white",padding:"56px 32px",borderTop:"1px solid #e5e7eb"}}>
+      <div style={{maxWidth:1000,margin:"0 auto"}}>
+        <h2 style={{fontSize:26,fontWeight:700,color:"#111827",marginBottom:28,textAlign:"center"}}>Why JordanLand?</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20}}>
+          {[["Official Records","All data verified against Department of Lands records"],["Map Locations","Direct Google Maps links for available properties"],["Property Photos","Real photos of land plots available for purchase"],["Direct Support","Connect via phone or WhatsApp instantly"]].map(([title,desc],i)=>
+            <div key={i} style={{padding:"28px 20px",background:"#f8fafc",borderRadius:10,border:"1px solid #e5e7eb"}}>
+              <div style={{fontSize:16,fontWeight:600,color:"#111827",marginBottom:8}}>{title}</div>
+              <div style={{fontSize:13,color:"#6b7280",lineHeight:1.6}}>{desc}</div>
             </div>
           )}
         </div>
       </div>
     </div>
-    <div style={{background:"#0f172a",padding:"28px 20px",textAlign:"center"}}>
-      <div style={{fontSize:13,fontWeight:700,color:"#fbbf24",marginBottom:6}}>أراضي الأردن — Jordan Land</div>
-      <div style={{fontSize:11,color:"#64748b"}}>جميع الحقوق محفوظة © 2026</div>
+    {/* Footer */}
+    <div style={{background:"#1e3a5f",padding:"28px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:15,fontWeight:700,color:"white"}}>JordanLand</div>
+      <div style={{fontSize:12,color:"rgba(255,255,255,0.4)"}}>All rights reserved {"\u00A9"} 2026</div>
     </div>
     {showFavs&&<FavModal lots={favLots} onClose={()=>setShowFavs(false)} onDetail={l=>{setDetail(l);setShowFavs(false)}} toggleFav={toggleFav}/>}
     <DetailModal lot={detail} onClose={()=>setDetail(null)}/>
     {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
   </div>;
 
-  // ─── MY LISTINGS ───
-  if(page==="my-listings")return <div dir="rtl" style={{fontFamily:"'Segoe UI','Noto Kufi Arabic',Tahoma,sans-serif",background:"#fafaf8",minHeight:"100vh"}}>
+  /* ── MY LISTINGS PAGE ──────────────────────── */
+  if(page==="my-listings")return <div style={{fontFamily:F,background:"#f8fafc",minHeight:"100vh"}}>
     <Navbar/>
-    <div style={{maxWidth:900,margin:"0 auto",padding:"28px 20px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+    <div style={{maxWidth:900,margin:"0 auto",padding:"40px 32px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
         <div>
-          <h1 style={{fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:4}}>عروضي</h1>
-          <p style={{fontSize:12,color:"#64748b"}}>{myLands.length>0?`لديك ${myLands.length} عرض`:"لم تقم بإضافة أي عرض بعد"}</p>
+          <h1 style={{fontSize:26,fontWeight:700,color:"#111827",marginBottom:4}}>My Listings</h1>
+          <p style={{fontSize:14,color:"#6b7280"}}>{myLands.length>0?myLands.length+" listing"+(myLands.length>1?"s":""):"No listings yet"}</p>
         </div>
-        <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",borderRadius:9,padding:"10px 20px",color:"white",cursor:"pointer",fontSize:13,fontWeight:700}}>+ إضافة أرض جديدة</button>
+        <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"#2563eb",border:"none",borderRadius:8,padding:"10px 20px",color:"white",cursor:"pointer",fontSize:14,fontWeight:600}}>+ Add New Listing</button>
       </div>
 
       {myLands.length===0?
-        <div style={{textAlign:"center",padding:"60px 20px"}}>
-          <div style={{fontSize:48,marginBottom:14}}>📋</div>
-          <h3 style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:6}}>لا توجد عروض</h3>
-          <p style={{fontSize:12,color:"#64748b",marginBottom:16}}>أضف أول قطعة أرض لعرضها على المنصة</p>
-          <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",border:"none",borderRadius:9,padding:"10px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>إضافة أرض</button>
+        <div style={{textAlign:"center",padding:"80px 20px",background:"white",borderRadius:10,border:"1px solid #e5e7eb"}}>
+          <div style={{fontSize:22,fontWeight:600,color:"#111827",marginBottom:8}}>No listings yet</div>
+          <p style={{fontSize:14,color:"#6b7280",marginBottom:20}}>Add your first land listing to get started</p>
+          <button onClick={()=>{setEditingLand(null);setShowUpload(true);}} style={{background:"#2563eb",color:"white",border:"none",borderRadius:8,padding:"10px 24px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Add Listing</button>
         </div>
       :
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {myLands.map(land=><div key={land.id} style={{background:"white",borderRadius:14,padding:"18px 20px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          {myLands.map(land=><div key={land.id} style={{background:"white",borderRadius:10,padding:"20px 24px",border:"1px solid #e5e7eb"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1,cursor:"pointer"}} onClick={()=>setDetail(land)}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <span style={{background:gc(land.gov).bg,color:gc(land.gov).tx,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6}}>{land.gov.replace("محافظة ","")}</span>
-                  {land.mapUrl&&<span style={{background:"#e8f0fe",color:"#1a73e8",fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5}}>📍 خريطة</span>}
-                  {land.pic&&<span style={{background:"#f0fdf4",color:"#059669",fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5}}>🏞️ صورة</span>}
+                  <span style={{background:"#f3f4f6",color:"#374151",fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:4}}>{govEN(land.gov)}</span>
+                  {land.mapUrl&&<span style={{color:"#2563eb",fontSize:11,fontWeight:500}}>Map</span>}
                 </div>
-                <div style={{fontSize:15,fontWeight:800,color:"#1e293b",marginBottom:3}}>قطعة رقم {land.plot} — {land.village}</div>
-                <div style={{fontSize:11,color:"#64748b"}}>حوض {land.basin} | {fmt(land.area)} م² | {fmtJOD(land.price)}</div>
-                {land.description&&<div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>{land.description}</div>}
+                <div style={{fontSize:16,fontWeight:700,color:"#111827",marginBottom:3}}>Plot #{land.plot} — {land.village}</div>
+                <div style={{fontSize:13,color:"#6b7280"}}>{land.basin} | {fmt(land.area)} m{"\u00B2"} | {fmtJOD(land.price)}</div>
+                {land.description&&<div style={{fontSize:13,color:"#9ca3af",marginTop:4}}>{land.description}</div>}
               </div>
-              <div style={{display:"flex",gap:6,flexShrink:0,marginRight:12}}>
-                <button onClick={()=>{setEditingLand(land);setShowUpload(true);}} style={{background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:7,padding:"6px 12px",color:"#0284c7",cursor:"pointer",fontSize:11,fontWeight:600}}>✏️ تعديل</button>
-                <button onClick={()=>setDeleteConfirm(land)} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"6px 12px",color:"#dc2626",cursor:"pointer",fontSize:11,fontWeight:600}}>🗑️ حذف</button>
+              <div style={{display:"flex",gap:8,flexShrink:0,marginLeft:16}}>
+                <button onClick={()=>{setEditingLand(land);setShowUpload(true);}} style={{background:"white",border:"1px solid #d1d5db",borderRadius:6,padding:"7px 14px",color:"#374151",cursor:"pointer",fontSize:13,fontWeight:500}}>Edit</button>
+                <button onClick={()=>setDeleteConfirm(land)} style={{background:"white",border:"1px solid #fecaca",borderRadius:6,padding:"7px 14px",color:"#dc2626",cursor:"pointer",fontSize:13,fontWeight:500}}>Delete</button>
               </div>
             </div>
           </div>)}
@@ -829,15 +818,13 @@ export default function JordanLand({ user }){
       }
     </div>
 
-    {/* Delete Confirmation Modal */}
     {deleteConfirm&&<div onClick={()=>setDeleteConfirm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div onClick={e=>e.stopPropagation()} dir="rtl" style={{background:"white",borderRadius:18,maxWidth:400,width:"100%",padding:28,textAlign:"center"}}>
-        <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
-        <h3 style={{fontSize:16,fontWeight:800,color:"#1e293b",marginBottom:6}}>تأكيد الحذف</h3>
-        <p style={{fontSize:12,color:"#64748b",marginBottom:20}}>هل أنت متأكد من حذف قطعة رقم {deleteConfirm.plot} في {deleteConfirm.village}؟ لا يمكن التراجع عن هذا الإجراء.</p>
+      <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:12,maxWidth:400,width:"100%",padding:32,textAlign:"center"}}>
+        <div style={{fontSize:20,fontWeight:700,color:"#111827",marginBottom:8}}>Delete Listing?</div>
+        <p style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Are you sure you want to delete Plot #{deleteConfirm.plot} in {deleteConfirm.village}? This cannot be undone.</p>
         <div style={{display:"flex",gap:10}}>
-          <button onClick={()=>setDeleteConfirm(null)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:12,fontWeight:600,cursor:"pointer",fontSize:12}}>إلغاء</button>
-          <button onClick={()=>handleDelete(deleteConfirm.id)} style={{flex:1,background:"#dc2626",border:"none",borderRadius:9,padding:12,color:"white",fontWeight:700,cursor:"pointer",fontSize:12}}>نعم، احذف</button>
+          <button onClick={()=>setDeleteConfirm(null)} style={{flex:1,background:"#f3f4f6",border:"none",borderRadius:8,padding:12,fontWeight:500,cursor:"pointer",fontSize:14,color:"#374151"}}>Cancel</button>
+          <button onClick={()=>handleDelete(deleteConfirm.id)} style={{flex:1,background:"#dc2626",border:"none",borderRadius:8,padding:12,color:"white",fontWeight:600,cursor:"pointer",fontSize:14}}>Delete</button>
         </div>
       </div>
     </div>}
@@ -847,129 +834,117 @@ export default function JordanLand({ user }){
     {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
   </div>;
 
-  // ─── LISTINGS ───
-  return <div dir="rtl" style={{fontFamily:"'Segoe UI','Noto Kufi Arabic',Tahoma,sans-serif",background:"#fafaf8",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+  /* ── LISTINGS PAGE ─────────────────────────── */
+  return <div style={{fontFamily:F,background:"#f8fafc",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
     <Navbar/>
     <div style={{display:"flex",flex:1,overflow:"hidden"}}>
       {/* Sidebar */}
-      <div style={{width:260,background:"white",borderLeft:"1px solid #e2e8f0",padding:"16px 14px",overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-          <h3 style={{fontSize:14,fontWeight:800,color:"#1e293b"}}>🔍 البحث المتقدم</h3>
-          {activeCount>0&&<button onClick={clearFilters} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 8px",color:"#ef4444",cursor:"pointer",fontSize:10,fontWeight:600}}>مسح</button>}
+      <div style={{width:280,background:"white",borderRight:"1px solid #e5e7eb",padding:"20px 18px",overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+          <h3 style={{fontSize:16,fontWeight:700,color:"#111827",margin:0}}>Filters</h3>
+          {activeCount>0&&<button onClick={clearFilters} style={{background:"none",border:"none",color:"#2563eb",cursor:"pointer",fontSize:13,fontWeight:500}}>Clear all</button>}
         </div>
-        <input value={search} onChange={e=>{setSearch(e.target.value);setPerPage(40)}} placeholder="ابحث: محافظة، مديرية، قرية، حوض..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 11px",fontSize:12,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
-        <FilterSelect label="المحافظة" icon="🏛️" value={filters.gov} options={govs} onChange={v=>setFilter("gov",v)} count={filters.gov?ALL_LOTS.filter(l=>l.gov===filters.gov).length:ALL_LOTS.length}/>
-        <FilterSelect label="مديرية التسجيل" icon="📍" value={filters.dist} options={dists} onChange={v=>setFilter("dist",v)} disabled={!filters.gov}/>
-        <FilterSelect label="القرية" icon="🏘️" value={filters.village} options={villages} onChange={v=>setFilter("village",v)} disabled={!filters.dist}/>
-        <FilterSelect label="الحوض" icon="📐" value={filters.basin} options={basins} onChange={v=>setFilter("basin",v)} disabled={!filters.village}/>
+        <input value={search} onChange={e=>{setSearch(e.target.value);setPerPage(40)}} placeholder="Search locations..." style={{width:"100%",border:"1px solid #d1d5db",borderRadius:8,padding:"10px 12px",fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:18,transition:"border-color 0.2s"}}
+          onFocus={e=>e.target.style.borderColor="#2563eb"} onBlur={e=>e.target.style.borderColor="#d1d5db"}/>
+
+        <FilterSelect label="Governorate" value={filters.gov} options={govs} onChange={v=>setFilter("gov",v)} count={filters.gov?ALL_LOTS.filter(l=>l.gov===filters.gov).length:ALL_LOTS.length}/>
+        <FilterSelect label="Directorate" value={filters.dist} options={dists} onChange={v=>setFilter("dist",v)} disabled={!filters.gov}/>
+        <FilterSelect label="Village" value={filters.village} options={villages} onChange={v=>setFilter("village",v)} disabled={!filters.dist}/>
+        <FilterSelect label="Basin" value={filters.basin} options={basins} onChange={v=>setFilter("basin",v)} disabled={!filters.village}/>
+
         {/* Price Range */}
-        <div style={{marginBottom:11}}>
-          <label style={{display:"flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:700,color:"#475569",marginBottom:4}}>
-            <span style={{fontSize:13}}>💰</span>السعر (د.أ)
-          </label>
-          <div style={{display:"flex",gap:6}}>
-            <input type="number" value={filters.priceMin} onChange={e=>setFilter("priceMin",e.target.value)} placeholder="من" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
-            <input type="number" value={filters.priceMax} onChange={e=>setFilter("priceMax",e.target.value)} placeholder="إلى" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Price (JOD)</label>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input type="number" value={filters.priceMin} onChange={e=>setFilter("priceMin",e.target.value)} placeholder="Min" style={{flex:1,border:"1px solid #d1d5db",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+            <span style={{color:"#9ca3af",fontSize:12}}>{"\u2014"}</span>
+            <input type="number" value={filters.priceMax} onChange={e=>setFilter("priceMax",e.target.value)} placeholder="Max" style={{flex:1,border:"1px solid #d1d5db",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
           </div>
         </div>
+
         {/* Area Range */}
-        <div style={{marginBottom:11}}>
-          <label style={{display:"flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:700,color:"#475569",marginBottom:4}}>
-            <span style={{fontSize:13}}>📐</span>المساحة (م²)
-          </label>
-          <div style={{display:"flex",gap:6}}>
-            <input type="number" value={filters.areaMin} onChange={e=>setFilter("areaMin",e.target.value)} placeholder="من" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
-            <input type="number" value={filters.areaMax} onChange={e=>setFilter("areaMax",e.target.value)} placeholder="إلى" style={{flex:1,border:"1.5px solid #d9770660",borderRadius:9,padding:"9px 8px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:12,fontWeight:500,color:"#374151",marginBottom:5}}>Area (m{"\u00B2"})</label>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input type="number" value={filters.areaMin} onChange={e=>setFilter("areaMin",e.target.value)} placeholder="Min" style={{flex:1,border:"1px solid #d1d5db",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+            <span style={{color:"#9ca3af",fontSize:12}}>{"\u2014"}</span>
+            <input type="number" value={filters.areaMax} onChange={e=>setFilter("areaMax",e.target.value)} placeholder="Max" style={{flex:1,border:"1px solid #d1d5db",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
           </div>
         </div>
+
         {/* Toggle Filters */}
-        <div style={{display:"flex",gap:8,marginBottom:11}}>
-          <label onClick={()=>setFilter("hasMap",!filters.hasMap)} style={{flex:1,display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:filters.hasMap?"#1a73e8":"#94a3b8",cursor:"pointer",background:filters.hasMap?"#e8f0fe":"#f8fafc",borderRadius:7,padding:"7px 8px",border:filters.hasMap?"1.5px solid #4285f440":"1.5px solid #e2e8f0",transition:"all 0.2s"}}>
-            📍 خريطة
-          </label>
-          <label onClick={()=>setFilter("hasPhoto",!filters.hasPhoto)} style={{flex:1,display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:filters.hasPhoto?"#059669":"#94a3b8",cursor:"pointer",background:filters.hasPhoto?"#f0fdf4":"#f8fafc",borderRadius:7,padding:"7px 8px",border:filters.hasPhoto?"1.5px solid #10b98140":"1.5px solid #e2e8f0",transition:"all 0.2s"}}>
-            🏞️ صورة
-          </label>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <button onClick={()=>setFilter("hasMap",!filters.hasMap)} style={{flex:1,fontSize:12,fontWeight:500,color:filters.hasMap?"#2563eb":"#6b7280",cursor:"pointer",background:filters.hasMap?"#eff6ff":"white",borderRadius:6,padding:"8px 10px",border:filters.hasMap?"1px solid #bfdbfe":"1px solid #d1d5db",transition:"all 0.2s"}}>
+            Has Map
+          </button>
+          <button onClick={()=>setFilter("hasPhoto",!filters.hasPhoto)} style={{flex:1,fontSize:12,fontWeight:500,color:filters.hasPhoto?"#2563eb":"#6b7280",cursor:"pointer",background:filters.hasPhoto?"#eff6ff":"white",borderRadius:6,padding:"8px 10px",border:filters.hasPhoto?"1px solid #bfdbfe":"1px solid #d1d5db",transition:"all 0.2s"}}>
+            Has Photos
+          </button>
         </div>
-        {activeCount>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
+
+        {/* Active filters */}
+        {activeCount>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4,marginBottom:14}}>
           {Object.entries(filters).filter(([k,v])=>typeof v==="boolean"?v:Boolean(v)).map(([k,v])=>{
-            const labels={priceMin:"سعر من "+v,priceMax:"سعر حتى "+v,areaMin:"مساحة من "+v,areaMax:"مساحة حتى "+v,hasMap:"خريطة",hasPhoto:"صورة"};
-            const display=labels[k]||(typeof v==="string"?v.replace("محافظة ","").replace("اراضي ",""):String(v));
+            const labels={priceMin:"Min "+v+" JOD",priceMax:"Max "+v+" JOD",areaMin:"Min "+v+" m\u00B2",areaMax:"Max "+v+" m\u00B2",hasMap:"Has Map",hasPhoto:"Has Photos"};
+            const display=labels[k]||(typeof v==="string"?govEN(v):String(v));
             const resetVal=typeof v==="boolean"?false:"";
-            return <span key={k} style={{background:"#fef3c7",color:"#92400e",fontSize:9,fontWeight:600,padding:"2px 7px",borderRadius:5,display:"flex",alignItems:"center",gap:3}}>
-              {display}<span onClick={()=>setFilter(k,resetVal)} style={{cursor:"pointer",fontWeight:800}}>✕</span>
+            return <span key={k} style={{background:"#eff6ff",color:"#2563eb",fontSize:11,fontWeight:500,padding:"3px 8px",borderRadius:4,display:"flex",alignItems:"center",gap:4}}>
+              {display}<span onClick={()=>setFilter(k,resetVal)} style={{cursor:"pointer",fontWeight:700,fontSize:13}}>{"\u00D7"}</span>
             </span>;
           })}
         </div>}
-        <div style={{marginTop:"auto",paddingTop:16,borderTop:"1px solid #f1f5f9"}}>
-          <div style={{background:"#f8fafc",borderRadius:9,padding:12}}>
-            <div style={{fontSize:10,color:"#94a3b8"}}>نتائج البحث</div>
-            <div style={{fontSize:20,fontWeight:800,color:"#1e293b"}}>{filtered.length} <span style={{fontSize:12,fontWeight:400,color:"#64748b"}}>/ {ALL_LOTS.length}</span></div>
+
+        <div style={{marginTop:"auto",paddingTop:16,borderTop:"1px solid #f3f4f6"}}>
+          <div style={{background:"#f9fafb",borderRadius:8,padding:14,textAlign:"center"}}>
+            <div style={{fontSize:11,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.5px"}}>Results</div>
+            <div style={{fontSize:24,fontWeight:700,color:"#111827"}}>{filtered.length} <span style={{fontSize:13,fontWeight:400,color:"#6b7280"}}>of {ALL_LOTS.length}</span></div>
           </div>
         </div>
       </div>
-      {/* Main */}
-      <div ref={listRef} style={{flex:1,overflowY:"auto",padding:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+
+      {/* Main Grid */}
+      <div ref={listRef} style={{flex:1,overflowY:"auto",padding:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
           <div>
-            <h1 style={{fontSize:18,fontWeight:800,color:"#1e293b",marginBottom:1}}>الأراضي المتاحة</h1>
-            <p style={{fontSize:12,color:"#64748b"}}>عرض {Math.min(perPage,filtered.length)} من {filtered.length} قطعة</p>
+            <h1 style={{fontSize:22,fontWeight:700,color:"#111827",marginBottom:2}}>Available Land</h1>
+            <p style={{fontSize:14,color:"#6b7280"}}>Showing {Math.min(perPage,filtered.length)} of {filtered.length} properties</p>
           </div>
-          <select value={sort} onChange={e=>setSort(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontSize:11.5,fontWeight:600,background:"white",cursor:"pointer"}}>
-            <option value="price-asc">السعر ↑</option>
-            <option value="price-desc">السعر ↓</option>
-            <option value="area-desc">المساحة ↓</option>
-            <option value="area-asc">المساحة ↑</option>
-            <option value="gov-asc">المحافظة</option>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{border:"1px solid #d1d5db",borderRadius:8,padding:"8px 12px",fontSize:13,fontWeight:500,background:"white",cursor:"pointer",color:"#374151"}}>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="area-desc">Area: Largest</option>
+            <option value="area-asc">Area: Smallest</option>
+            <option value="gov-asc">Governorate</option>
           </select>
         </div>
         {filtered.length===0?
-          <div style={{textAlign:"center",padding:"60px 20px"}}>
-            <div style={{fontSize:44,marginBottom:14}}>🏜️</div>
-            <h3 style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:6}}>لا توجد نتائج</h3>
-            <p style={{fontSize:12,color:"#64748b",marginBottom:16}}>حاول تعديل معايير البحث</p>
-            <button onClick={clearFilters} style={{background:"linear-gradient(135deg,#d97706,#b45309)",color:"white",border:"none",borderRadius:9,padding:"9px 20px",fontSize:12,fontWeight:700,cursor:"pointer"}}>عرض الكل</button>
+          <div style={{textAlign:"center",padding:"80px 20px",background:"white",borderRadius:10,border:"1px solid #e5e7eb"}}>
+            <div style={{fontSize:22,fontWeight:600,color:"#111827",marginBottom:8}}>No results found</div>
+            <p style={{fontSize:14,color:"#6b7280",marginBottom:20}}>Try adjusting your filters</p>
+            <button onClick={clearFilters} style={{background:"#2563eb",color:"white",border:"none",borderRadius:8,padding:"10px 24px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Clear Filters</button>
           </div>
         :<>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270,1fr))",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300,1fr))",gap:16}}>
             {shown.map(lot=><LotCard key={lot.id} lot={lot} isFav={favs.includes(lot.id)} toggleFav={toggleFav} isComp={compIds.includes(lot.id)} toggleComp={toggleComp} onDetail={setDetail}/>)}
           </div>
-          {perPage<filtered.length&&<div style={{textAlign:"center",marginTop:24}}>
-            <button onClick={()=>setPerPage(p=>p+40)} style={{background:"white",border:"1.5px solid #d97706",borderRadius:10,padding:"11px 32px",fontSize:13,fontWeight:700,color:"#b45309",cursor:"pointer"}}>
-              عرض المزيد ({filtered.length-perPage} متبقية)
+          {perPage<filtered.length&&<div style={{textAlign:"center",marginTop:28}}>
+            <button onClick={()=>setPerPage(p=>p+40)} style={{background:"white",border:"1px solid #d1d5db",borderRadius:8,padding:"12px 36px",fontSize:14,fontWeight:600,color:"#374151",cursor:"pointer"}}
+              onMouseEnter={e=>e.target.style.borderColor="#2563eb"} onMouseLeave={e=>e.target.style.borderColor="#d1d5db"}>
+              Load More ({filtered.length-perPage} remaining)
             </button>
           </div>}
         </>}
       </div>
     </div>
     {/* Compare bar */}
-    {compIds.length>=1&&!showComp&&<div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#1e293b",borderRadius:12,padding:"10px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 10px 30px rgba(0,0,0,0.3)",zIndex:100}}>
-      <span style={{color:"white",fontSize:12,fontWeight:600}}>⚖️ {compIds.length} للمقارنة</span>
-      {compIds.length>=2&&<button onClick={()=>setShowComp(true)} style={{background:"#3b82f6",color:"white",border:"none",borderRadius:7,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer"}}>قارن</button>}
-      <button onClick={()=>setCompIds([])} style={{background:"rgba(255,255,255,0.1)",color:"#94a3b8",border:"none",borderRadius:7,padding:"7px 10px",fontSize:10,cursor:"pointer"}}>✕</button>
+    {compIds.length>=1&&!showComp&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:"#111827",borderRadius:10,padding:"10px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 10px 40px rgba(0,0,0,0.3)",zIndex:100}}>
+      <span style={{color:"white",fontSize:13,fontWeight:500}}>{compIds.length} selected</span>
+      {compIds.length>=2&&<button onClick={()=>setShowComp(true)} style={{background:"#2563eb",color:"white",border:"none",borderRadius:6,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Compare</button>}
+      <button onClick={()=>setCompIds([])} style={{background:"rgba(255,255,255,0.1)",color:"#9ca3af",border:"none",borderRadius:6,padding:"8px 12px",fontSize:12,cursor:"pointer"}}>{"\u00D7"}</button>
     </div>}
-    <a href="https://wa.me/962778445424" target="_blank" rel="noreferrer" style={{position:"fixed",bottom:16,left:16,width:52,height:52,borderRadius:"50%",background:"#25D366",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(37,211,102,0.4)",zIndex:90,textDecoration:"none",fontSize:24}}>💬</a>
     <DetailModal lot={detail} onClose={()=>setDetail(null)}/>
     {showComp&&<CompareModal lots={compLots} onClose={()=>setShowComp(false)}/>}
     {showFavs&&<FavModal lots={favLots} onClose={()=>setShowFavs(false)} onDetail={l=>{setDetail(l);setShowFavs(false)}} toggleFav={toggleFav}/>}
     {showUpload&&<UploadLand editData={editingLand} onClose={()=>{setShowUpload(false);setEditingLand(null);}} onSuccess={()=>setEditingLand(null)}/>}
-  </div>;
-}
-
-function FavModal({lots,onClose,onDetail,toggleFav}){
-  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div onClick={e=>e.stopPropagation()} dir="rtl" style={{background:"white",borderRadius:18,maxWidth:500,width:"100%",maxHeight:"80vh",overflow:"auto",padding:24}}>
-      <h2 style={{fontSize:18,fontWeight:800,marginBottom:14}}>❤️ المفضلة ({lots.length})</h2>
-      {lots.length===0?<p style={{color:"#94a3b8",fontSize:12}}>لم تضف أي قطع بعد</p>:
-        lots.map(l=><div key={l.id} onClick={()=>onDetail(l)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:700}}>قطعة {l.plot} — {l.village}</div>
-            <div style={{fontSize:11,color:"#64748b"}}>{l.gov.replace("محافظة ","")} | {fmt(l.area)} م² | {fmtJOD(l.price)}</div>
-          </div>
-          <button onClick={e=>{e.stopPropagation();toggleFav(l.id)}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",color:"#ef4444",cursor:"pointer",fontSize:10,fontWeight:600}}>إزالة</button>
-        </div>)
-      }
-      <button onClick={onClose} style={{marginTop:14,width:"100%",background:"#f1f5f9",border:"none",borderRadius:9,padding:10,fontWeight:600,cursor:"pointer",fontSize:12}}>إغلاق</button>
-    </div>
   </div>;
 }
